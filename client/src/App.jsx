@@ -86,12 +86,56 @@ function App() {
     setMapDialogOpen(true)
   }
 
-  const handleMapImageSelect = (imageUrl) => {
-    const newImages = [...images]
-    newImages[activeImageIndex] = imageUrl
-    setImages(newImages)
-    setMapDialogOpen(false)
-  }
+  const handleMapImageSelect = async (imageUrl) => {
+    try {
+      setLoading(true);
+      console.log('Loading satellite image:', imageUrl);
+
+      // Pre-load the image
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          console.log('Image loaded successfully:', {
+            width: img.width,
+            height: img.height,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight
+          });
+          resolve();
+        };
+        img.onerror = (e) => {
+          console.error('Image load error:', e);
+          reject(new Error('Görüntü yüklenemedi'));
+        };
+        img.src = imageUrl;
+      });
+
+      // Create new images array
+      const newImages = [...images];
+      newImages[activeImageIndex] = imageUrl;
+      setImages(newImages);
+
+      // Show success notification
+      setNotification({
+        open: true,
+        message: 'Uydu görüntüsü başarıyla yüklendi',
+        severity: 'success'
+      });
+
+      setMapDialogOpen(false);
+    } catch (error) {
+      console.error('Error loading satellite image:', error);
+      setNotification({
+        open: true,
+        message: 'Uydu görüntüsü yüklenirken bir hata oluştu: ' + error.message,
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const analyzeDamage = async () => {
     if (!images[0] || !images[1]) {
@@ -230,8 +274,8 @@ function App() {
 
       <Grid container spacing={3} sx={{ mt: 2 }}>
         {[0, 1].map((index) => (
-          <Grow in timeout={1000 + index * 500}>
-            <Grid item xs={12} md={6} key={index}>
+          <Grid item xs={12} md={6} key={index}>
+            <Grow in timeout={1000 + index * 500} key={`grow-${index}`}>
               <Paper
                 component={motion.div}
                 whileHover={{ scale: 1.02 }}
@@ -255,14 +299,71 @@ function App() {
                   {index === 0 ? 'Deprem Öncesi' : 'Deprem Sonrası'}
                 </Typography>
                 {images[index] ? (
-                  <Box sx={{ position: 'relative', width: '100%', height: 300 }}>
-                    <img
+                  <Box 
+                    sx={{ 
+                      position: 'relative', 
+                      width: '100%', 
+                      height: 300,
+                      bgcolor: 'grey.100',
+                      borderRadius: 1,
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {loading && activeImageIndex === index && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          bgcolor: 'rgba(0,0,0,0.5)',
+                          zIndex: 2
+                        }}
+                      >
+                        <CircularProgress sx={{ mb: 1 }} />
+                        <Typography variant="body2" color="white">
+                          Görüntü yükleniyor...
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box
+                      component="img"
                       src={images[index]}
                       alt={`Image ${index + 1}`}
-                      style={{
+                      loading="eager"
+                      sx={{
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
+                        transition: 'opacity 0.3s ease-in-out',
+                        opacity: loading && activeImageIndex === index ? 0.3 : 1
+                      }}
+                      onLoad={(e) => {
+                        console.log('Image loaded in DOM:', {
+                          src: e.target.src,
+                          width: e.target.width,
+                          height: e.target.height,
+                          naturalWidth: e.target.naturalWidth,
+                          naturalHeight: e.target.naturalHeight,
+                          complete: e.target.complete
+                        });
+                        // Force a re-render to ensure the image is displayed
+                        e.target.style.opacity = '1';
+                      }}
+                      onError={(e) => {
+                        console.error('Image load error in DOM:', e);
+                        setNotification({
+                          open: true,
+                          message: 'Görüntü yüklenirken bir hata oluştu',
+                          severity: 'error'
+                        });
+                        // Try to reload the image
+                        e.target.src = images[index] + '?retry=' + new Date().getTime();
                       }}
                     />
                     <Box
@@ -272,6 +373,7 @@ function App() {
                         right: 8,
                         display: 'flex',
                         gap: 1,
+                        zIndex: 1
                       }}
                     >
                       <IconButton
@@ -332,8 +434,8 @@ function App() {
                   </Box>
                 )}
               </Paper>
-            </Grid>
-          </Grow>
+            </Grow>
+          </Grid>
         ))}
       </Grid>
 

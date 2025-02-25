@@ -11,20 +11,24 @@ const app = express();
 
 // CORS ayarları
 app.use(cors({
-    origin: 'http://localhost:5173', // Sadece Vite development server'ı
+    origin: ['http://localhost:5173', 'https://earthengine.googleapis.com'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Diğer middleware'ler
-app.use(helmet()); // Güvenlik başlıkları için
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+}));
 app.use(morgan('dev')); // Loglama için
 app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Uploads klasörü için static middleware
+// Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Uploads klasörünü oluştur
@@ -49,7 +53,10 @@ app.use((req, res, next) => {
 
 // Routes
 const analysisRoutes = require('./routes/analysis');
+const earthEngineRoutes = require('./routes/earth-engine');
+
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/earth-engine', earthEngineRoutes);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to GitGudWeb API!' });
