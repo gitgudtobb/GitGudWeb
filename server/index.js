@@ -11,11 +11,11 @@ const app = express();
 
 // CORS ayarları
 app.use(cors({
-    origin: ['http://localhost:5173', 'https://earthengine.googleapis.com'],
+    origin: ['http://localhost:5173', 'http://localhost:5175', 'https://earthengine.googleapis.com'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['Content-Type', 'Authorization']
+    exposedHeaders: ['Content-Type', 'Authorization'] 
 }));
 
 // Diğer middleware'ler
@@ -45,18 +45,35 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/gitgudweb
 .then(() => console.log('MongoDB bağlantısı başarılı'))
 .catch(err => console.error('MongoDB bağlantı hatası:', err));
 
-// Geçici auth middleware (development için)
-app.use((req, res, next) => {
-    req.user = { _id: '65c8a5e8b6a1b86d27a93a1b' }; // Geçici kullanıcı ID'si
+// Auth0 middleware'ini import et
+const { checkJwt, getUserFromAuth0 } = require('./middleware/auth0');
+
+// Auth0 korumalı rotalar için middleware
+const auth0Protected = [checkJwt, getUserFromAuth0];
+
+// Geçici kullanıcı middleware'i (Auth0 entegrasyonu tam çalışana kadar)
+const tempUserMiddleware = (req, res, next) => {
+    // Eğer Auth0 token'ı varsa, onu kullan
+    if (req.user) {
+        return next();
+    }
+    
+    // Yoksa geçici kullanıcı bilgisi ekle
+    req.user = { _id: '65c8a5e8b6a1b86d27a93a1b' };
     next();
-});
+};
 
 // Routes
 const analysisRoutes = require('./routes/analysis');
 const earthEngineRoutes = require('./routes/earth-engine');
+const userRoutes = require('./routes/user');
 
-app.use('/api/analysis', analysisRoutes);
-app.use('/api/earth-engine', earthEngineRoutes);
+// Geçici olarak auth korumasız rotalar (geliştirme sırasında)
+app.use('/api/analysis', tempUserMiddleware, analysisRoutes);
+app.use('/api/earth-engine', tempUserMiddleware, earthEngineRoutes);
+
+// Auth0 korumalı rotalar
+app.use('/api/user', userRoutes);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to GitGudWeb API!' });
@@ -67,6 +84,14 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'API is working!' });
 });
 
+// Auth0 test endpoint'i
+app.get('/api/auth-test', auth0Protected, (req, res) => {
+    res.json({ 
+        message: 'You are authenticated!',
+        user: req.user 
+    });
+});
+
 // 404 handler
 app.use((req, res, next) => {
     res.status(404).json({ message: 'Route bulunamadı' });
@@ -75,6 +100,15 @@ app.use((req, res, next) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);
+    
+    // Auth0 hatalarını özel olarak işle
+    if (err.name === 'UnauthorizedError') {
+        return res.status(401).json({ 
+            message: 'Kimlik doğrulama hatası', 
+            error: 'Geçersiz veya eksik token' 
+        });
+    }
+    
     res.status(500).json({ 
         message: 'Bir şeyler ters gitti!', 
         error: err.message 
