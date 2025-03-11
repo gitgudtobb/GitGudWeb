@@ -22,15 +22,24 @@ import {
   Grow,
   Divider,
   Chip,
+  Tooltip,
+  Stack
 } from '@mui/material'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import DeleteIcon from '@mui/icons-material/Delete'
 import MapIcon from '@mui/icons-material/Map'
 import AnalyticsIcon from '@mui/icons-material/Analytics'
 import TimelineIcon from '@mui/icons-material/Timeline'
+import HistoryIcon from '@mui/icons-material/History'
+import CompareIcon from '@mui/icons-material/Compare'
+import WarningIcon from '@mui/icons-material/Warning'
+import InfoIcon from '@mui/icons-material/Info'
 import '../App.css'
 import MapImageSelector from '../components/MapImageSelector'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
+import HeroSection from '../components/HeroSection'
 import pixelmatch from 'pixelmatch'
 import Pica from 'pica'
 import { useAuth0 } from '@auth0/auth0-react'
@@ -220,17 +229,16 @@ function MainPage() {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Analizler yüklenirken bir hata oluştu');
+        throw new Error('Route bulunamadı');
       }
-
+      
       const data = await response.json();
       setAnalyses(data);
     } catch (error) {
       console.error('Analizleri yükleme hatası:', error);
       setNotification({
         open: true,
-        message: error.message || 'Analizler yüklenirken bir hata oluştu',
+        message: 'Analizleri yüklerken bir hata oluştu',
         severity: 'error'
       });
     } finally {
@@ -245,6 +253,26 @@ function MainPage() {
   useEffect(() => {
     loadAnalyses();
   }, []);
+
+  const handleCloseNotification = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setNotification({ ...notification, open: false });
+  };
+
+  // Helper function to get damage color
+  const getDamageColor = (damagePercentage) => {
+    if (damagePercentage < 20) return '#4caf50'; // Green
+    if (damagePercentage < 50) return '#ff9800'; // Orange
+    return '#f44336'; // Red
+  };
+
+  // Format date function
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleDateString('tr-TR', options);
+  };
 
   const renderHeader = () => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -271,612 +299,842 @@ function MainPage() {
     </Box>
   )
 
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {renderHeader()}
-      <Fade in timeout={1000}>
-        <Box>
-          <Typography 
-            variant="h2" 
-            component="h1" 
-            gutterBottom 
-            align="center" 
-            color="error"
-            sx={{
-              fontWeight: 'bold',
-              textShadow: '2px 2px 4px rgba(0,0,0,0.1)',
-              mb: 3
-            }}
-          >
-            Deprem Hasar Tespit Sistemi
-          </Typography>
-          <Typography 
-            variant="subtitle1" 
-            gutterBottom 
-            align="center" 
-            color="text.secondary"
-            sx={{ mb: 4 }}
-          >
-            Deprem öncesi ve sonrası fotoğrafları yükleyerek hasar analizi yapın
-          </Typography>
-        </Box>
-      </Fade>
-
-      <Grid container spacing={3} sx={{ mt: 2 }}>
-        {[0, 1].map((index) => (
-          <Grid item xs={12} md={6} key={index}>
-            <Grow in timeout={1000 + index * 500} key={`grow-${index}`}>
-              <Paper
-                component={motion.div}
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                sx={{
-                  p: 2,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minHeight: 300,
-                  position: 'relative',
-                  borderRadius: 2,
-                  boxShadow: 3,
-                  bgcolor: 'background.paper',
-                  '&:hover': {
-                    boxShadow: 6,
-                  }
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <Header />
+        
+        <Container component="main" maxWidth="lg" sx={{ flexGrow: 1, py: 4 }}>
+          <AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Typography 
+                variant="h3" 
+                component="h1" 
+                gutterBottom 
+                sx={{ 
+                  fontWeight: 700, 
+                  textAlign: 'center',
+                  mb: 4,
+                  background: 'linear-gradient(45deg, #1976d2, #2196f3)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  textShadow: '0px 2px 4px rgba(0,0,0,0.1)'
                 }}
               >
-                <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'medium' }}>
-                  {index === 0 ? 'Deprem Öncesi' : 'Deprem Sonrası'}
+                Deprem Hasar Analizi
+              </Typography>
+              
+              <Paper 
+                component={motion.div}
+                whileHover={{ boxShadow: '0 14px 35px rgba(0, 0, 0, 0.07)' }}
+                elevation={3} 
+                sx={{ 
+                  p: 3, 
+                  mb: 4, 
+                  borderRadius: 2,
+                  background: 'linear-gradient(to right, #f5f7fa, #ffffff)',
+                  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
+                  overflow: 'hidden'
+                }}
+              >
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3, color: '#1976d2' }}>
+                  <CompareIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                  Görüntü Karşılaştırması
                 </Typography>
-                {images[index] ? (
-                  <Box 
-                    sx={{ 
-                      position: 'relative', 
-                      width: '100%', 
-                      height: 300,
-                      bgcolor: 'grey.100',
-                      borderRadius: 1,
-                      overflow: 'hidden'
-                    }}
+                
+                <Grid container spacing={3}>
+                  {[0, 1].map((index) => (
+                    <Grid item xs={12} md={6} key={index}>
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5, delay: index * 0.2 }}
+                      >
+                        <Card 
+                          elevation={2} 
+                          sx={{ 
+                            height: '100%', 
+                            display: 'flex', 
+                            flexDirection: 'column',
+                            borderRadius: 2,
+                            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                            '&:hover': {
+                              transform: 'translateY(-5px)',
+                              boxShadow: '0 12px 20px rgba(0, 0, 0, 0.1)'
+                            }
+                          }}
+                        >
+                          <CardContent sx={{ flexGrow: 1 }}>
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 500 }}>
+                              {index === 0 ? 'Deprem Öncesi' : 'Deprem Sonrası'}
+                            </Typography>
+                            
+                            <Box 
+                              className="upload-zone"
+                              sx={{ 
+                                height: 300, 
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: 2,
+                                border: '2px dashed',
+                                borderColor: images[index] ? 'primary.main' : 'grey.300',
+                                backgroundColor: images[index] ? 'rgba(25, 118, 210, 0.04)' : 'grey.50',
+                                transition: 'all 0.3s ease',
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {images[index] ? (
+                                <>
+                                  <Box 
+                                    component="img" 
+                                    src={images[index]} 
+                                    alt={`Image ${index + 1}`} 
+                                    sx={{ 
+                                      width: '100%', 
+                                      height: '100%', 
+                                      objectFit: 'cover' 
+                                    }} 
+                                  />
+                                  <Box 
+                                    sx={{ 
+                                      position: 'absolute', 
+                                      bottom: 0, 
+                                      left: 0, 
+                                      right: 0, 
+                                      p: 1, 
+                                      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                                      display: 'flex',
+                                      justifyContent: 'flex-end'
+                                    }}
+                                  >
+                                    <Tooltip title="Görüntüyü Sil">
+                                      <IconButton 
+                                        size="small" 
+                                        onClick={handleImageDelete(index)}
+                                        sx={{ color: 'white' }}
+                                      >
+                                        <DeleteIcon />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Haritadan Seç">
+                                      <IconButton 
+                                        size="small" 
+                                        onClick={handleMapSelect(index)}
+                                        sx={{ color: 'white' }}
+                                      >
+                                        <MapIcon />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Box>
+                                </>
+                              ) : (
+                                <>
+                                  <motion.div
+                                    animate={{ scale: [1, 1.05, 1] }}
+                                    transition={{ repeat: Infinity, duration: 2 }}
+                                  >
+                                    <CloudUploadIcon sx={{ fontSize: 60, color: 'grey.400', mb: 2 }} />
+                                  </motion.div>
+                                  <Typography variant="body1" gutterBottom>
+                                    Görüntü Yükleyin
+                                  </Typography>
+                                  <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                                    veya haritadan seçin
+                                  </Typography>
+                                  <Stack direction="row" spacing={2}>
+                                    <Button
+                                      variant="contained"
+                                      component="label"
+                                      startIcon={<CloudUploadIcon />}
+                                    >
+                                      Dosya Seç
+                                      <input
+                                        type="file"
+                                        hidden
+                                        accept="image/*"
+                                        onChange={handleImageUpload(index)}
+                                      />
+                                    </Button>
+                                    <Button
+                                      variant="outlined"
+                                      onClick={handleMapSelect(index)}
+                                      startIcon={<MapIcon />}
+                                    >
+                                      Haritadan Seç
+                                    </Button>
+                                  </Stack>
+                                </>
+                              )}
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    </Grid>
+                  ))}
+                </Grid>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    {loading && activeImageIndex === index && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          bgcolor: 'rgba(0,0,0,0.5)',
-                          zIndex: 2
-                        }}
-                      >
-                        <CircularProgress sx={{ mb: 1 }} />
-                        <Typography variant="body2" color="white">
-                          Görüntü yükleniyor...
-                        </Typography>
-                      </Box>
-                    )}
-                    <Box
-                      component="img"
-                      src={images[index]}
-                      alt={`Image ${index + 1}`}
-                      loading="eager"
-                      sx={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        transition: 'opacity 0.3s ease-in-out',
-                        opacity: loading && activeImageIndex === index ? 0.3 : 1
-                      }}
-                      onLoad={(e) => {
-                        console.log('Image loaded in DOM:', {
-                          src: e.target.src,
-                          width: e.target.width,
-                          height: e.target.height,
-                          naturalWidth: e.target.naturalWidth,
-                          naturalHeight: e.target.naturalHeight,
-                          complete: e.target.complete
-                        });
-                        // Force a re-render to ensure the image is displayed
-                        e.target.style.opacity = '1';
-                      }}
-                      onError={(e) => {
-                        console.error('Image load error in DOM:', e);
-                        setNotification({
-                          open: true,
-                          message: 'Görüntü yüklenirken bir hata oluştu',
-                          severity: 'error'
-                        });
-                        // Try to reload the image
-                        e.target.src = images[index] + '?retry=' + new Date().getTime();
-                      }}
-                    />
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        display: 'flex',
-                        gap: 1,
-                        zIndex: 1
-                      }}
-                    >
-                      <IconButton
-                        onClick={handleMapSelect(index)}
-                        sx={{ bgcolor: 'background.paper' }}
-                      >
-                        <MapIcon />
-                      </IconButton>
-                      <IconButton
-                        onClick={handleImageDelete(index)}
-                        sx={{ bgcolor: 'background.paper' }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </Box>
-                ) : (
-                  <Box
-                    sx={{
-                      width: '100%',
-                      height: 300,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '2px dashed',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                    }}
-                  >
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload(index)}
-                      style={{ display: 'none' }}
-                      id={`image-upload-${index}`}
-                    />
-                    <label htmlFor={`image-upload-${index}`}>
-                      <Button
-                        component="span"
-                        variant="contained"
-                        startIcon={<CloudUploadIcon />}
-                      >
-                        Fotoğraf Yükle
-                      </Button>
-                    </label>
-                    <Typography variant="caption" sx={{ mt: 2, color: 'text.secondary' }}>
-                      veya haritadan seç
-                    </Typography>
                     <Button
-                      variant="outlined"
-                      startIcon={<MapIcon />}
-                      onClick={handleMapSelect(index)}
-                      sx={{ mt: 1 }}
-                    >
-                      Haritadan Seç
-                    </Button>
-                  </Box>
-                )}
-              </Paper>
-            </Grow>
-          </Grid>
-        ))}
-      </Grid>
-
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-        <Button
-          component={motion.button}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          variant="contained"
-          size="large"
-          startIcon={<AnalyticsIcon />}
-          onClick={analyzeDamage}
-          disabled={analyzing || !images[0] || !images[1]}
-          sx={{
-            px: 4,
-            py: 1.5,
-            borderRadius: 2,
-            background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-            boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
-            '&:hover': {
-              background: 'linear-gradient(45deg, #2196F3 10%, #21CBF3 70%)',
-            }
-          }}
-        >
-          {analyzing ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CircularProgress size={20} color="inherit" />
-              <span>Analiz Ediliyor...</span>
-            </Box>
-          ) : (
-            'Hasar Analizi Yap'
-          )}
-        </Button>
-      </Box>
-
-      {analysisResult && (
-        <Grow in timeout={1000}>
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h5" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-              Analiz Sonuçları
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Card
-                  component={motion.div}
-                  whileHover={{ scale: 1.02 }}
-                  sx={{
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    '&:hover': {
-                      boxShadow: 6,
-                    }
-                  }}
-                >
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'medium' }}>
-                      Hasar Değerlendirmesi
-                    </Typography>
-                    <Typography variant="h4" color="error" gutterBottom>
-                      {analysisResult.damagePercentage}% Hasar
-                    </Typography>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-                      Hasar Seviyesi: {analysisResult.severity}
-                    </Typography>
-                    <Typography variant="h6" sx={{ mt: 2 }}>
-                      Öneriler:
-                    </Typography>
-                    <ul>
-                      {analysisResult.recommendations.map((rec, index) => (
-                        <li key={index}>
-                          <Typography>{rec}</Typography>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Card
-                  component={motion.div}
-                  whileHover={{ scale: 1.02 }}
-                  sx={{
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    '&:hover': {
-                      boxShadow: 6,
-                    }
-                  }}
-                >
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'medium' }}>
-                      Görsel Analiz
-                    </Typography>
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Hasarlı Bölgeler
-                      </Typography>
-                      <img
-                        src={analysisResult.processedImages.highlighted}
-                        alt="Damage Highlights"
-                        style={{
-                          width: '100%',
-                          height: 200,
-                          objectFit: 'cover',
-                        }}
-                      />
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          </Box>
-        </Grow>
-      )}
-
-      {analyses.length > 0 && (
-        <Fade in timeout={1000}>
-          <Box sx={{ mt: 6 }}>
-            <Typography 
-              variant="h5" 
-              gutterBottom 
-              sx={{ 
-                color: 'primary.main', 
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}
-            >
-              <TimelineIcon />
-              Önceki Analizler
-            </Typography>
-            <Grid container spacing={3}>
-              {analyses.map((analysis, index) => (
-                <Grow in timeout={1000 + index * 200} key={analysis._id}>
-                  <Grid item xs={12} md={6}>
-                    <Card
-                      component={motion.div}
-                      whileHover={{ scale: 1.02 }}
-                      onClick={() => handleAnalysisClick(analysis)}
-                      sx={{
+                      variant="contained"
+                      color="primary"
+                      size="large"
+                      onClick={analyzeDamage}
+                      disabled={analyzing || !images[0] || !images[1]}
+                      startIcon={analyzing ? <CircularProgress size={24} color="inherit" /> : <AnalyticsIcon />}
+                      sx={{ 
+                        py: 1.5, 
+                        px: 4, 
                         borderRadius: 2,
-                        boxShadow: 3,
-                        background: 'linear-gradient(to right bottom, #ffffff, #f5f5f5)',
+                        background: 'linear-gradient(45deg, #1976d2, #2196f3)',
+                        boxShadow: '0 4px 10px rgba(33, 150, 243, 0.3)',
                         '&:hover': {
-                          boxShadow: 6,
-                          cursor: 'pointer',
+                          boxShadow: '0 6px 15px rgba(33, 150, 243, 0.4)',
                         }
                       }}
                     >
-                      <CardContent>
-                        <Typography 
-                          variant="h6" 
-                          gutterBottom 
-                          sx={{ 
-                            color: 'primary.main',
-                            fontWeight: 'medium' 
-                          }}
-                        >
-                          {new Date(analysis.createdAt).toLocaleDateString('tr-TR')}
-                        </Typography>
-                        <Typography 
-                          variant="body1" 
-                          sx={{ 
-                            color: analysis.results.damagePercentage > 50 ? 'error.main' : 'warning.main',
-                            fontWeight: 'bold',
-                            fontSize: '1.1rem'
-                          }} 
-                          gutterBottom
-                        >
-                          Hasar Oranı: {analysis.results.damagePercentage}%
-                        </Typography>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            color: 'text.secondary',
-                            mb: 2
-                          }}
-                        >
-                          Hasar Seviyesi: {analysis.results.severity}
-                        </Typography>
-                        <Box 
-                          sx={{ 
-                            mt: 2, 
-                            display: 'flex', 
-                            gap: 2,
-                            borderRadius: 2,
-                            overflow: 'hidden',
-                            boxShadow: 1
-                          }}
-                        >
-                          <img
-                            src={`${API_BASE_URL}/${analysis.images.before.url}`}
-                            alt="Öncesi"
-                            style={{
-                              width: '50%',
-                              height: 120,
-                              objectFit: 'cover',
-                            }}
-                          />
-                          <img
-                            src={`${API_BASE_URL}/${analysis.images.after.url}`}
-                            alt="Sonrası"
-                            style={{
-                              width: '50%',
-                              height: 120,
-                              objectFit: 'cover',
-                            }}
-                          />
-                        </Box>
-                      </CardContent>
-                    </Card>
+                      {analyzing ? 'Analiz Yapılıyor...' : 'Hasar Analizi Yap'}
+                    </Button>
+                  </motion.div>
+                </Box>
+              </Paper>
+              {/*Analysis Results*/}
+              {analysisResult && (
+                <Grow in={!!analysisResult} timeout={500}>
+                  <Paper
+                    component={motion.div}
+                    whileHover={{ boxShadow: '0 14px 35px rgba(0, 0, 0, 0.07)' }}
+                    elevation={3}
+                    sx={{ 
+                      p: 3,
+                      mb: 4,
+                      borderRadius: 2,
+                      background: 'linear-gradient(45deg, #1976d2, #2196f3)',
+                      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
+                    }}
+                  >
+                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3, color: '#1976d2' }}>
+                      <AnalyticsIcon sx={{ mr: 1 , verticalAlign: 'middle' }} />
+                      Hasar Analizi Sonuçları
+                    </Typography>
+                    
+                    <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <Card sx={{ height: '100%', borderRadius: 2 }}>
+                          <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                              Hasar Oranı
+                            </Typography>
+                            <Box sx={{ position: 'relative', display: 'inline-flex', width: '100%', justifyContent: 'center', my: 2 }}>
+                              <Box
+                                sx={{
+                                  position: 'relative',
+                                  display: 'inline-flex',
+                                  width: 200,
+                                  height: 200,
+                                }}
+                              >
+                                <CircularProgress
+                                  variant="determinate"
+                                  value={100}
+                                  size={200}
+                                  thickness={4}
+                                  sx={{ color: theme.palette.grey[200], position: 'absolute' }}
+                                />
+                                <motion.div
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  transition={{ delay: 0.3, duration: 0.5 }}
+                                >
+                                  <CircularProgress
+                                    variant="determinate"
+                                    value={analysisResult.damagePercentage}
+                                    size={200}
+                                    thickness={4}
+                                    sx={{ color: getDamageColor(analysisResult.damagePercentage) }}
+                                  />
+                                </motion.div>
+                                <Box
+                                  sx={{
+                                    top: 0,
+                                    left: 0,
+                                    bottom: 0,
+                                    right: 0,
+                                    position: 'absolute',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  <motion.div
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    transition={{ delay: 0.5, type: "spring", stiffness: 260, damping: 20 }}
+                                  >
+                                    <Typography
+                                      variant="h4"
+                                      component="div"
+                                      color={getDamageColor(analysisResult.damagePercentage)}
+                                      fontWeight="bold"
+                                    >
+                                      {`${Math.round(analysisResult.damagePercentage)}%`}
+                                    </Typography>
+                                  </motion.div>
+                                </Box>
+                              </Box>
+                            </Box>
+                            <Typography variant="body1" align="center" sx={{ mt: 2 }}>
+                              {analysisResult.damagePercentage < 20
+                                ? 'Hafif Hasar'
+                                : analysisResult.damagePercentage < 50
+                                ? 'Orta Hasar'
+                                : 'Ağır Hasar'}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <Card sx={{ height: '100%', borderRadius: 2 }}>
+                          <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                              Değerlendirme ve Öneriler
+                            </Typography>
+                            <Box sx={{ mt: 2 }}>
+                              {analysisResult.recommendations.map((rec, idx) => (
+                                <motion.div
+                                  key={idx}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: idx * 0.1 + 0.3, duration: 0.5 }}
+                                >
+                                  <Box 
+                                    sx={{ 
+                                      mb: 2, 
+                                      p: 2, 
+                                      borderRadius: 1, 
+                                      bgcolor: 'rgba(25, 118, 210, 0.04)',
+                                      border: '1px solid rgba(25, 118, 210, 0.1)'
+                                    }}
+                                  >
+                                    <Typography variant="body1">
+                                      {rec}
+                                    </Typography>
+                                  </Box>
+                                </motion.div>
+                              ))}
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    </Grid>
+                    
+                    <Grid item xs={12}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5, duration: 0.5 }}
+                      >
+                        <Card sx={{ borderRadius: 2 }}>
+                          <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                              Detaylı Analiz
+                            </Typography>
+                            <Grid container spacing={2} sx={{ mt: 1 }}>
+                              {Object.entries(analysisResult.details || {}).map(([key, value], idx) => (
+                                <Grid item xs={12} sm={6} md={4} key={key}>
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: idx * 0.1 + 0.5, duration: 0.5 }}
+                                  >
+                                    <Box 
+                                      sx={{ 
+                                        p: 2, 
+                                        borderRadius: 1, 
+                                        bgcolor: 'rgba(0, 0, 0, 0.02)',
+                                        height: '100%',
+                                        transition: 'all 0.3s ease',
+                                        '&:hover': {
+                                          bgcolor: 'rgba(0, 0, 0, 0.04)',
+                                          transform: 'translateY(-2px)'
+                                        }
+                                      }}
+                                    >
+                                      <Typography variant="subtitle2" color="textSecondary">
+                                        {key}
+                                      </Typography>
+                                      <Typography variant="body1" sx={{ mt: 1, fontWeight: 'medium' }}>
+                                        {typeof value === 'number' ? value.toFixed(2) : value.toString()}
+                                      </Typography>
+                                    </Box>
+                                  </motion.div>
+                                </Grid>
+                              ))}
+                            </Grid>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    </Grid>
                   </Grid>
+                  </Paper>
+
                 </Grow>
-              ))}
-            </Grid>
-          </Box>
-        </Fade>
-      )}
-      {/* Analiz Detay Dialog */}
-      <Dialog 
-        open={Boolean(selectedAnalysis)} 
+              )}
+              <Paper 
+              component={motion.div}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+              whileHover={{ boxShadow: '0 14px 35px rgba(0, 0, 0, 0.07)' }}
+              elevation={3} 
+              sx={{ 
+                p: 3, 
+                borderRadius: 2,
+                background: 'linear-gradient(to right, #f5f7fa, #ffffff)',
+                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)'
+              }}
+            >
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3, color: '#1976d2' }}>
+                <HistoryIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                Önceki Analizler
+              </Typography>
+              
+              {loading ? (
+                <Box sx={{ width: '100%', my: 4, textAlign: 'center' }}>
+                  <CircularProgress />
+                  <Typography variant="body1" sx={{ mt: 2 }}>
+                    Analizler yükleniyor...
+                  </Typography>
+                </Box>
+              ) : analyses.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Box 
+                    sx={{ 
+                      textAlign: 'center', 
+                      py: 6,
+                      bgcolor: 'rgba(0, 0, 0, 0.02)',
+                      borderRadius: 2
+                    }}
+                  >
+                    <InfoIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                    <Typography variant="h6" color="text.secondary">
+                      Henüz kaydedilmiş analiz bulunmuyor
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Yeni bir analiz yapmak için yukarıdaki görüntüleri yükleyin
+                    </Typography>
+                  </Box>
+                </motion.div>
+              ) : (
+                <Grid container spacing={3}>
+                  {analyses.map((analysis, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1, duration: 0.5 }}
+                        whileHover={{ y: -10 }}
+                      >
+                        <Card 
+                          sx={{ 
+                            cursor: 'pointer',
+                            height: '100%',
+                            borderRadius: 2,
+                            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                            '&:hover': {
+                              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)'
+                            }
+                          }}
+                          onClick={() => handleAnalysisClick(analysis)}
+                        >
+                          <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
+                            <Box
+                              component="img"
+                              src={analysis.afterImageUrl}
+                              alt="Analiz Sonrası Görüntü"
+                              sx={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                              }}
+                            />
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                top: 10,
+                                right: 10,
+                                bgcolor: getDamageColor(analysis.results.damagePercentage),
+                                color: 'white',
+                                borderRadius: '50%',
+                                width: 40,
+                                height: 40,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 'bold',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                              }} 
+                              >
+                              {`${Math.round(analysis.results.damagePercentage)}%`}
+                            </Box>
+                          </Box>
+                          <CardContent>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'medium', mb: 1 }}>
+                              {analysis.location?.address || 'Konum bilgisi yok'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              {formatDate(analysis.createdAt || new Date())}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                              <Chip 
+                                size="small" 
+                                label={
+                                  analysis.results.damagePercentage < 20
+                                    ? 'Hafif Hasar'
+                                    : analysis.results.damagePercentage < 50
+                                    ? 'Orta Hasar'
+                                    : 'Ağır Hasar'
+                                }
+                                sx={{ 
+                                  bgcolor: getDamageColor(analysis.results.damagePercentage) + '20',
+                                  color: getDamageColor(analysis.results.damagePercentage),
+                                  fontWeight: 'medium'
+                                }}
+                              />
+                              <Chip 
+                                size="small" 
+                                label={analysis.metadata?.buildingType || 'Bina'}
+                                variant="outlined"
+                              />
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </Paper>
+          </motion.div>
+        </AnimatePresence>
+      </Container>
+      <Footer />
+      
+      {/* Map Dialog */}
+      <Dialog
+        open={mapDialogOpen}
+        onClose={() => setMapDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          Haritadan Görüntü Seç
+          <IconButton
+            aria-label="close"
+            onClick={() => setMapDialogOpen(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <MapImageSelector onImageSelect={handleMapImageSelect} onClose={() => setMapDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Analysis Detail Dialog */}
+      <Dialog
+        open={!!selectedAnalysis}
         onClose={() => setSelectedAnalysis(null)}
         maxWidth="md"
         fullWidth
-        TransitionComponent={Grow}
-        transitionDuration={500}
       >
         {selectedAnalysis && (
           <>
             <DialogTitle>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h5" component="div" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                  Analiz Detayları
-                </Typography>
-                <Chip 
-                  label={new Date(selectedAnalysis.createdAt).toLocaleDateString('tr-TR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                  color="primary"
-                  variant="outlined"
-                />
-              </Box>
+              Analiz Detayları
+              <IconButton
+                aria-label="close"
+                onClick={() => setSelectedAnalysis(null)}
+                sx={{
+                  position: 'absolute',
+                  right: 8,
+                  top: 8,
+                  color: (theme) => theme.palette.grey[500],
+                }}
+              >
+                <DeleteIcon />
+              </IconButton>
             </DialogTitle>
-            <DialogContent>
+            <DialogContent dividers>
               <Grid container spacing={3}>
                 <Grid item xs={12}>
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="h6" gutterBottom sx={{ color: 'primary.main' }}>
-                      Hasar Değerlendirmesi
-                    </Typography>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      gap: 2, 
-                      alignItems: 'center',
-                      mb: 2 
-                    }}>
-                      <Typography 
-                        variant="h4" 
-                        sx={{ 
-                          color: selectedAnalysis.results.damagePercentage > 50 ? 'error.main' : 'warning.main',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        {selectedAnalysis.results.damagePercentage}%
-                      </Typography>
-                      <Box>
-                        <Typography variant="body1" color="text.secondary">
-                          Hasar Oranı
-                        </Typography>
-                        <Typography variant="h6" sx={{ color: 'text.primary' }}>
-                          {selectedAnalysis.results.severity}
-                        </Typography>
+                  <Typography variant="h6" gutterBottom>
+                    Görüntü Karşılaştırması
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <Box sx={{ position: 'relative', paddingTop: '56.25%', mb: 1 }}>
+                        <Box
+                          component="img"
+                          src={selectedAnalysis.beforeImageUrl}
+                          alt="Deprem Öncesi"
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: 1
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            bgcolor: 'rgba(0, 0, 0, 0.6)',
+                            color: 'white',
+                            p: 1
+                          }}
+                        >
+                          Deprem Öncesi
+                        </Box>
                       </Box>
-                    </Box>
-                  </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Box sx={{ position: 'relative', paddingTop: '56.25%', mb: 1 }}>
+                        <Box
+                          component="img"
+                          src={selectedAnalysis.afterImageUrl}
+                          alt="Deprem Sonrası"
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: 1
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            bgcolor: 'rgba(0, 0, 0, 0.6)',
+                            color: 'white',
+                            p: 1
+                          }}
+                        >
+                          Deprem Sonrası
+                        </Box>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <Card sx={{ height: '100%', borderRadius: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Hasar Oranı
+                      </Typography>
+                      <Box sx={{ position: 'relative', display: 'inline-flex', width: '100%', justifyContent: 'center', my: 2 }}>
+                        <Box
+                          sx={{
+                            position: 'relative',
+                            display: 'inline-flex',
+                            width: 150,
+                            height: 150,
+                          }}
+                        >
+                          <CircularProgress
+                            variant="determinate"
+                            value={100}
+                            size={150}
+                            thickness={4}
+                            sx={{ color: theme.palette.grey[200], position: 'absolute' }}
+                          />
+                          <CircularProgress
+                            variant="determinate"
+                            value={selectedAnalysis.results.damagePercentage}
+                            size={150}
+                            thickness={4}
+                            sx={{ color: getDamageColor(selectedAnalysis.results.damagePercentage) }}
+                          />
+                          <Box
+                            sx={{
+                              top: 0,
+                              left: 0,
+                              bottom: 0,
+                              right: 0,
+                              position: 'absolute',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Typography
+                              variant="h4"
+                              component="div"
+                              color={getDamageColor(selectedAnalysis.results.damagePercentage)}
+                              fontWeight="bold"
+                            >
+                              {`${Math.round(selectedAnalysis.results.damagePercentage)}%`}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                      <Typography variant="body1" align="center" sx={{ mt: 2 }}>
+                        {selectedAnalysis.results.damagePercentage < 20
+                          ? 'Hafif Hasar'
+                          : selectedAnalysis.results.damagePercentage < 50
+                          ? 'Orta Hasar'
+                          : 'Ağır Hasar'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <Card sx={{ height: '100%', borderRadius: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Bina Bilgileri
+                      </Typography>
+                      <Box sx={{ mt: 2 }}>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Bina Tipi
+                            </Typography>
+                            <Typography variant="body1" sx={{ mb: 2 }}>
+                              {selectedAnalysis.metadata?.buildingType || 'Belirtilmemiş'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Yapım Yılı
+                            </Typography>
+                            <Typography variant="body1" sx={{ mb: 2 }}>
+                              {selectedAnalysis.metadata?.constructionYear || 'Belirtilmemiş'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Kat Sayısı
+                            </Typography>
+                            <Typography variant="body1" sx={{ mb: 2 }}>
+                              {selectedAnalysis.metadata?.floorCount || 'Belirtilmemiş'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="subtitle2" color="textSecondary">
+                              Analiz Tarihi
+                            </Typography>
+                            <Typography variant="body1" sx={{ mb: 2 }}>
+                              {formatDate(selectedAnalysis.createdAt || new Date())}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    </CardContent>
+                  </Card>
                 </Grid>
                 
                 <Grid item xs={12}>
-                  <Divider sx={{ mb: 3 }} />
-                  <Typography variant="h6" gutterBottom sx={{ color: 'primary.main' }}>
-                    Görsel Karşılaştırma
-                  </Typography>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    gap: 2,
-                    mb: 3,
-                    '& img': {
-                      borderRadius: 2,
-                      boxShadow: 2,
-                      transition: 'transform 0.3s ease-in-out',
-                      '&:hover': {
-                        transform: 'scale(1.02)',
-                      }
-                    }
-                  }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle2" gutterBottom align="center">
-                        Deprem Öncesi
+                  <Card sx={{ borderRadius: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Değerlendirme ve Öneriler
                       </Typography>
-                      <img
-                        src={`${API_BASE_URL}/${selectedAnalysis.images.before.url}`}
-                        alt="Deprem Öncesi"
-                        style={{
-                          width: '100%',
-                          height: 300,
-                          objectFit: 'cover',
-                        }}
-                      />
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle2" gutterBottom align="center">
-                        Deprem Sonrası
-                      </Typography>
-                      <img
-                        src={`${API_BASE_URL}/${selectedAnalysis.images.after.url}`}
-                        alt="Deprem Sonrası"
-                        style={{
-                          width: '100%',
-                          height: 300,
-                          objectFit: 'cover',
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                      <Box sx={{ mt: 2 }}>
+                        {selectedAnalysis.results.recommendations.map((rec, idx) => (
+                          <Box 
+                            key={idx}
+                            sx={{ 
+                              mb: 2, 
+                              p: 2, 
+                              borderRadius: 1, 
+                              bgcolor: 'rgba(25, 118, 210, 0.04)',
+                              border: '1px solid rgba(25, 118, 210, 0.1)'
+                            }}
+                          >
+                            <Typography variant="body1">
+                              {rec}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </CardContent>
+                  </Card>
                 </Grid>
-
-                {selectedAnalysis.results.recommendations && (
-                  <Grid item xs={12}>
-                    <Divider sx={{ mb: 3 }} />
-                    <Typography variant="h6" gutterBottom sx={{ color: 'primary.main' }}>
-                      Öneriler ve Notlar
-                    </Typography>
-                    <Box sx={{ 
-                      bgcolor: 'background.paper',
-                      p: 2,
-                      borderRadius: 2,
-                      boxShadow: 1
-                    }}>
-                      {selectedAnalysis.results.recommendations.map((rec, index) => (
-                        <Typography 
-                          key={index} 
-                          variant="body1" 
-                          sx={{ 
-                            mb: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            '&:before': {
-                              content: '"•"',
-                              color: 'primary.main',
-                              fontWeight: 'bold',
-                              fontSize: '1.2em',
-                              marginRight: 1
-                            }
-                          }}
-                        >
-                          {rec}
-                        </Typography>
-                      ))}
-                    </Box>
-                  </Grid>
-                )}
               </Grid>
             </DialogContent>
             <DialogActions>
-              <Button 
-                onClick={() => setSelectedAnalysis(null)}
-                variant="contained"
-                sx={{
-                  background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                  boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
-                }}
-              >
-                Kapat
-              </Button>
+              <Button onClick={() => setSelectedAnalysis(null)}>Kapat</Button>
             </DialogActions>
           </>
         )}
       </Dialog>
-
-      <Dialog
-        open={mapDialogOpen}
-        onClose={() => setMapDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogContent>
-          <MapImageSelector
-            onImageSelect={handleMapImageSelect}
-            onClose={() => setMapDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
+      
+      {/* Notification Snackbar */}
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
-        onClose={() => setNotification({ ...notification, open: false })}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ '& .MuiSnackbarContent-root': { width: '100%' } }}
       >
-        <Alert
-          onClose={() => setNotification({ ...notification, open: false })}
-          severity={notification.severity}
+        <Alert 
+          onClose={handleCloseNotification} 
+          severity={notification.severity} 
+          sx={{ width: '100%' }}
+          variant="filled"
+          elevation={6}
         >
           {notification.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   )
 }
 

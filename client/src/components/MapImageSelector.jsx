@@ -1,12 +1,28 @@
 import { useState, useRef } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { Box, Button, Typography, CircularProgress } from '@mui/material';
+import { 
+  Box, 
+  Button, 
+  Typography, 
+  CircularProgress, 
+  Paper, 
+  Stepper, 
+  Step, 
+  StepLabel,
+  Card,
+  CardContent,
+  Fade
+} from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import MapIcon from '@mui/icons-material/Map';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 // Fix for default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -144,110 +160,152 @@ function MapImageSelector({ onImageSelect, onClose }) {
     setSelectedBounds(null);
   };
 
+  const steps = ['Bölge Seçimi', 'Tarih Seçimi'];
+  const activeStep = step === 'select-area' ? 0 : 1;
+
   return (
-    <Box sx={{ width: '100%', height: '600px', position: 'relative' }}>
-      <Box
-        sx={{
-          height: '400px',
-          position: 'relative',
-          '& .leaflet-tile': {
-            crossOrigin: 'anonymous',
-          },
-        }}
-      >
-        <MapContainer
-          center={[center.lat, center.lng]}
-          zoom={13}
-          style={{ height: '100%', width: '100%' }}
-          ref={mapRef}
-        >
-          <TileLayer
-            url="http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-            maxZoom={20}
-            subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-            attribution="&copy; Google Maps"
-          />
-        </MapContainer>
+    <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+      <Box sx={{ p: 3, bgcolor: '#f5f5f5' }}>
+        <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
+          Uydu Görüntüsü Seçimi
+        </Typography>
+        
+        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+          {steps.map((label, index) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
       </Box>
-      <Box
-        sx={{
-          mt: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 2,
-        }}
-      >
-        {error && (
-          <Typography color="error" variant="body2">
-            {error}
-          </Typography>
-        )}
-
-        {step === 'select-date' && (
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <DatePicker
-              label="Tarih Seçin"
-              value={selectedDate}
-              onChange={(newDate) => setSelectedDate(newDate)}
-              disabled={loading}
-              shouldDisableDate={(date) =>
-                !availableDates.some((d) => d.isSame(date, 'day'))
-              }
-            />
-          </LocalizationProvider>
-        )}
-
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          {step === 'select-area' ? (
-            <>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSelectArea}
-                disabled={loading}
-                startIcon={
-                  loading && <CircularProgress size={20} color="inherit" />
-                }
+      
+      <Box sx={{ width: '100%', position: 'relative' }}>
+        <Fade in={true} timeout={500}>
+          <Box>
+            <Box
+              sx={{
+                height: '400px',
+                position: 'relative',
+                '& .leaflet-tile': {
+                  crossOrigin: 'anonymous',
+                },
+                border: '1px solid #e0e0e0',
+              }}
+            >
+              <MapContainer
+                center={[center.lat, center.lng]}
+                zoom={13}
+                style={{ height: '100%', width: '100%' }}
+                ref={mapRef}
               >
-                {loading ? 'Tarihler Yükleniyor...' : 'Bu Bölgeyi Seç'}
-              </Button>
-              <Button variant="outlined" onClick={onClose}>
-                İptal
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleGetImage}
-                disabled={loading || !selectedDate}
-                startIcon={
-                  loading && <CircularProgress size={20} color="inherit" />
-                }
-              >
-                {loading ? 'Görüntü Alınıyor...' : 'Görüntüyü Al'}
-              </Button>
-              <Button variant="outlined" onClick={handleBack}>
-                Geri
-              </Button>
-              <Button variant="outlined" onClick={onClose}>
-                İptal
-              </Button>
-            </>
-          )}
-        </Box>
+                <TileLayer
+                  url="http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+                  maxZoom={20}
+                  subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+                  attribution="&copy; Google Maps"
+                />
+              </MapContainer>
+            </Box>
+            
+            <Box sx={{ p: 3 }}>
+              {error && (
+                <Card sx={{ mb: 2, bgcolor: '#ffebee', border: '1px solid #ffcdd2' }}>
+                  <CardContent>
+                    <Typography color="error" variant="body2">
+                      {error}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              )}
+
+              {step === 'select-date' && (
+                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <DatePicker
+                      label="Tarih Seçin"
+                      value={selectedDate}
+                      onChange={(newDate) => setSelectedDate(newDate)}
+                      disabled={loading}
+                      shouldDisableDate={(date) =>
+                        !availableDates.some((d) => d.isSame(date, 'day'))
+                      }
+                      sx={{ width: '100%', maxWidth: 300 }}
+                    />
+                  </LocalizationProvider>
+                </Box>
+              )}
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                {step === 'select-date' ? (
+                  <>
+                    <Button
+                      variant="outlined"
+                      onClick={handleBack}
+                      disabled={loading}
+                      startIcon={<ArrowBackIcon />}
+                    >
+                      Geri
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={handleGetImage}
+                      disabled={loading || !selectedDate}
+                      color="primary"
+                      endIcon={loading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
+                    >
+                      Görüntüyü Seç
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outlined"
+                      onClick={onClose}
+                      color="secondary"
+                    >
+                      İptal
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={handleSelectArea}
+                      disabled={loading}
+                      color="primary"
+                      endIcon={loading ? <CircularProgress size={20} /> : <MapIcon />}
+                    >
+                      Bölgeyi Seç
+                    </Button>
+                  </>
+                )}
+              </Box>
+            </Box>
+          </Box>
+        </Fade>
+        
+        {loading && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(255, 255, 255, 0.7)',
+              zIndex: 1000,
+            }}
+          >
+            <Box sx={{ textAlign: 'center' }}>
+              <CircularProgress size={60} />
+              <Typography variant="h6" sx={{ mt: 2 }}>
+                {step === 'select-area' ? 'Tarihler Yükleniyor...' : 'Görüntü Yükleniyor...'}
+              </Typography>
+            </Box>
+          </Box>
+        )}
       </Box>
-      <Typography
-        variant="caption"
-        sx={{ mt: 1, display: 'block', textAlign: 'center' }}
-      >
-        {step === 'select-area'
-          ? 'Haritayı istediğiniz bölgeye getirip zoom yaparak görüntülemek istediğiniz alanı seçebilirsiniz'
-          : 'Seçtiğiniz bölge için kullanılabilir tarihleri görebilirsiniz'}
-      </Typography>
-    </Box>
+    </Paper>
   );
 }
 
