@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
     username: {
@@ -11,47 +10,76 @@ const userSchema = new mongoose.Schema({
     },
     email: {
         type: String,
-        required: [true, 'Email is required'],
         unique: true,
         trim: true,
         lowercase: true,
-        match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
-    },
-    password: {
-        type: String,
-        required: function() {
-            // Auth0 ile giriş yapanlar için password zorunlu değil
-            return !this.auth0Id;
+        validate: {
+            validator: function(v) {
+                if (this.authType === 'auth0' && !v) return true;
+                return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(v);
+            },
+            message: 'Please enter a valid email'
         },
-        minlength: [6, 'Password must be at least 6 characters long'],
-        select: false
+        sparse: true // Boş değerlere izin ver
+    },
+    name: {
+        type: String,
+        trim: true
+    },
+    profilePicture: {
+        type: String
+    },
+    bio: {
+        type: String,
+        maxlength: [500, 'Bio cannot be more than 500 characters']
+    },
+    phone: {
+        type: String,
+        trim: true
+    },
+    address: {
+        type: String,
+        trim: true
     },
     auth0Id: {
         type: String,
         unique: true,
-        sparse: true // null değerler için unique constraint uygulanmaz
+        sparse: true
+    },
+    authType: {
+        type: String,
+        enum: ['auth0'],
+        required: true,
+        default: 'auth0'
+    },
+    roles: {
+        type: [String],
+        default: ['user']
     },
     createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
         type: Date,
         default: Date.now
     }
 });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-    if (!this.isModified('password') || !this.password) {
-        next();
-    } else {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        next();
-    }
+// Güncelleme zamanını otomatik olarak ayarla
+userSchema.pre('save', function(next) {
+    this.updatedAt = Date.now();
+    next();
 });
 
-// Compare password method
-userSchema.methods.comparePassword = async function(enteredPassword) {
-    if (!this.password) return false;
-    return await bcrypt.compare(enteredPassword, this.password);
-};
+// Auth0 kullanıcıları için geçici email oluşturma
+userSchema.pre('save', function(next) {
+    if (this.authType === 'auth0' && !this.email && this.auth0Id) {
+        this.email = `temp-${this.auth0Id}@example.com`;
+    } else if (this.authType === 'auth0' && this.email) {
+        // Email already exists for Auth0 user, no need to generate a temporary one
+    }
+    next();
+});
 
 module.exports = mongoose.model('User', userSchema);

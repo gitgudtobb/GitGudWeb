@@ -3,7 +3,12 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const Analysis = require('../models/Analysis');
-const auth = require('../middleware/auth');
+const axios = require('axios');
+const FormData = require('form-data');
+const fs = require('fs');
+
+// AI model service URL
+const AI_MODEL_URL = 'http://localhost:5002/api/analyze';
 
 // Dosya yükleme konfigürasyonu
 const storage = multer.diskStorage({
@@ -35,87 +40,102 @@ router.get('/test', (req, res) => {
     res.json({ message: 'Analysis routes are working!' });
 });
 
-// Kullanıcının analizlerini getir
-router.get('/my', auth, async (req, res) => {
+// Kullanıcının kendi analizlerini getir
+router.get('/my', async (req, res) => {
     try {
-        const analyses = await Analysis.find({ userId: req.user._id })
+        // Sabit bir kullanıcı ID'si kullan
+        const defaultUserId = "65c8a5e8b6a1b86d27a93a1b";
+        
+        console.log("Kullanıcı ID'si:", defaultUserId);
+        
+        // Kullanıcının analizlerini bul
+        const analyses = await Analysis.find({ user: defaultUserId })
             .sort({ createdAt: -1 })
-            .limit(20);
-        res.json(analyses);
+            .limit(10);
+        
+        res.json({ analyses });
     } catch (error) {
         console.error('Analizleri getirme hatası:', error);
-        res.status(500).json({ error: 'Analizler getirilirken bir hata oluştu' });
+        res.status(500).json({ error: 'Analizleri getirirken bir hata oluştu' });
     }
 });
 
-// Yeni analiz oluştur
-router.post('/', auth, upload.fields([
-    { name: 'beforeImage', maxCount: 1 },
-    { name: 'afterImage', maxCount: 1 }
-]), async (req, res) => {
-    try {
-        console.log('Received files:', req.files);
-        console.log('Received body:', req.body);
-
-        if (!req.files || !req.files.beforeImage || !req.files.afterImage) {
-            return res.status(400).json({ error: 'Her iki fotoğraf da gerekli' });
-        }
-
-        // Basit hasar analizi simülasyonu
-        const damageAnalysis = {
-            damagePercentage: Math.floor(Math.random() * 100),
-            severity: ['Hafif', 'Orta', 'Orta-Ağır', 'Ağır'][Math.floor(Math.random() * 4)],
-            recommendations: [
-                'Yapısal değerlendirme gerekli',
-                'Detaylı mühendislik incelemesi önerilir',
-                'Acil güçlendirme çalışması gerekebilir'
-            ]
-        };
-
-        const analysis = new Analysis({
-            userId: req.user._id,
-            location: JSON.parse(req.body.location),
-            images: {
-                before: {
-                    url: req.files.beforeImage[0].path,
-                    timestamp: new Date()
-                },
-                after: {
-                    url: req.files.afterImage[0].path,
-                    timestamp: new Date()
-                }
-            },
-            results: {
-                damagePercentage: damageAnalysis.damagePercentage,
-                severity: damageAnalysis.severity,
-                recommendations: damageAnalysis.recommendations,
-                processedImages: {
-                    difference: req.files.afterImage[0].path,
-                    highlighted: req.files.afterImage[0].path
-                }
-            },
-            metadata: req.body.metadata ? JSON.parse(req.body.metadata) : {},
-            status: 'completed'
-        });
-
-        await analysis.save();
-        res.status(201).json(analysis);
-    } catch (error) {
-        console.error('Analiz oluşturma hatası:', error);
-        res.status(500).json({ error: 'Analiz oluşturulurken bir hata oluştu: ' + error.message });
-    }
+// Analiz oluştur
+router.post('/', async (req, res) => {
+  try {
+    console.log("Analiz isteği alındı:", req.body);
+    
+    // Sabit bir kullanıcı ID'si kullan
+    const defaultUserId = "65c8a5e8b6a1b86d27a93a1b";
+    
+    console.log("Analiz oluşturuluyor, kullanıcı ID:", defaultUserId);
+    
+    // Şu an için yapay zeka entegrasyonu olmadığı için dummy sonuçlar dönelim
+    const results = {
+      damageLevel: "moderate",
+      damagePercentage: 45,
+      affectedAreas: ["roof", "walls", "windows"],
+      recommendations: [
+        "Çatıdaki hasarlar onarılmalı",
+        "Duvar çatlakları kontrol edilmeli",
+        "Kırık pencereler değiştirilmeli"
+      ],
+      riskAssessment: "medium",
+      estimatedRepairCost: {
+        min: 15000,
+        max: 25000,
+        currency: "TRY"
+      }
+    };
+    
+    // Yeni analiz oluştur
+    const newAnalysis = new Analysis({
+      user: defaultUserId, // Mevcut kullanıcı ID'si
+      location: {
+        type: "Point",
+        coordinates: [29.0335, 41.0053], // İstanbul koordinatları
+        address: "İstanbul, Türkiye"
+      },
+      results: results,
+      metadata: {
+        buildingType: "Residential",
+        constructionYear: 2000,
+        floorCount: 5
+      },
+      images: {
+        before: req.body.beforeImage || "https://example.com/before.jpg",
+        after: req.body.afterImage || "https://example.com/after.jpg"
+      },
+      createdAt: new Date(),
+      status: "completed"
+    });
+    
+    await newAnalysis.save();
+    
+    res.status(201).json({
+      message: 'Analiz başarıyla kaydedildi',
+      analysisId: newAnalysis._id,
+      results: results
+    });
+  } catch (error) {
+    console.error('Analiz oluşturma hatası:', error);
+    res.status(500).json({ error: 'Analiz oluşturulurken bir hata oluştu', details: error.message });
+  }
 });
 
 // Belirli bir analizi getir
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
+        // Sabit bir kullanıcı ID'si kullan
+        const defaultUserId = "65c8a5e8b6a1b86d27a93a1b";
+        
         const analysis = await Analysis.findOne({
             _id: req.params.id,
-            userId: req.user._id
+            user: defaultUserId
         });
         
         if (!analysis) {
-            return res.status(404).json({ error: 'Analiz bulunamadı' });
+            return res.status(404).json({ error: 'Analiz bulunamadı veya bu analizi görüntüleme yetkiniz yok' });
         }
         
         res.json(analysis);
@@ -126,11 +146,15 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Konum bazlı analiz arama
-router.get('/location/nearby', auth, async (req, res) => {
+router.get('/location/nearby', async (req, res) => {
     try {
         const { longitude, latitude, maxDistance = 1000 } = req.query;
+        
+        // Sabit bir kullanıcı ID'si kullan
+        const defaultUserId = "65c8a5e8b6a1b86d27a93a1b";
 
         const analyses = await Analysis.find({
+            user: defaultUserId,
             location: {
                 $near: {
                     $geometry: {

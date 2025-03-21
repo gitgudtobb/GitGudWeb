@@ -23,7 +23,11 @@ import {
   Divider,
   Chip,
   Tooltip,
-  Stack
+  Stack,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
@@ -36,7 +40,7 @@ import CompareIcon from '@mui/icons-material/Compare'
 import WarningIcon from '@mui/icons-material/Warning'
 import InfoIcon from '@mui/icons-material/Info'
 import '../App.css'
-import MapImageSelector from '../components/MapImageSelector'
+import ImageSourceSelector from '../components/ImageSourceSelector'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import HeroSection from '../components/HeroSection'
@@ -50,7 +54,7 @@ const pica = new Pica()
 const API_BASE_URL = 'http://localhost:5001'; // Server'ın çalıştığı port
 
 function MainPage() {
-  const { logout } = useAuth0();
+  const { logout, getAccessTokenSilently } = useAuth0();
   const navigate = useNavigate();
   const [images, setImages] = useState([null, null])
   const [mapDialogOpen, setMapDialogOpen] = useState(false)
@@ -161,40 +165,25 @@ function MainPage() {
     }
 
     setAnalyzing(true);
+    setAnalysisResult(null);
+
     try {
-      // Form verilerini oluştur
-      const formData = new FormData();
-      
-      // Base64 görüntüleri Blob'a çevir
-      const beforeBlob = await fetch(images[0]).then(r => r.blob());
-      const afterBlob = await fetch(images[1]).then(r => r.blob());
-      
-      formData.append('beforeImage', beforeBlob, 'before.jpg');
-      formData.append('afterImage', afterBlob, 'after.jpg');
-      
-      // Konum bilgisini ekle
-      formData.append('location', JSON.stringify({
-        type: 'Point',
-        coordinates: [29.0335, 41.0053] // İstanbul koordinatları
-      }));
-
-      // Metadata ekle
-      formData.append('metadata', JSON.stringify({
-        buildingType: 'Residential',
-        constructionYear: 2000,
-        floorCount: 5
-      }));
-
-      // API'ye gönder
+      // API'ye gönder - Python AI modeli ile entegre edilmiş endpoint'e istek yap
       const response = await fetch(`${API_BASE_URL}/api/analysis`, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          beforeImage: images[0],
+          afterImage: images[1],
+        }),
         credentials: 'include'
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Analiz kaydedilirken bir hata oluştu');
+        throw new Error(errorData.error || 'Analiz kaydedilirken bir hata oluştu');
       }
 
       const result = await response.json();
@@ -203,17 +192,17 @@ function MainPage() {
       // Başarılı bildirim göster
       setNotification({
         open: true,
-        message: 'Analiz başarıyla kaydedildi',
+        message: 'Yapay zeka analizi başarıyla tamamlandı',
         severity: 'success'
       });
 
       // Analizleri yeniden yükle
       loadAnalyses();
     } catch (error) {
-      console.error('Analiz hatası:', error);
+      console.error('Yapay zeka analiz hatası:', error);
       setNotification({
         open: true,
-        message: error.message || 'Analiz sırasında bir hata oluştu',
+        message: error.message || 'Yapay zeka analizi sırasında bir hata oluştu',
         severity: 'error'
       });
     } finally {
@@ -225,15 +214,21 @@ function MainPage() {
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/analysis/my`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         credentials: 'include'
       });
       
       if (!response.ok) {
-        throw new Error('Route bulunamadı');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Analizler yüklenirken bir hata oluştu');
       }
       
       const data = await response.json();
-      setAnalyses(data);
+      console.log("Yüklenen analizler:", data);
+      setAnalyses(data.analyses || []);
     } catch (error) {
       console.error('Analizleri yükleme hatası:', error);
       setNotification({
@@ -241,6 +236,7 @@ function MainPage() {
         message: 'Analizleri yüklerken bir hata oluştu',
         severity: 'error'
       });
+      setAnalyses([]);
     } finally {
       setLoading(false);
     }
@@ -488,218 +484,150 @@ function MainPage() {
                     <Button
                       variant="contained"
                       color="primary"
-                      size="large"
+                      startIcon={<AnalyticsIcon />}
                       onClick={analyzeDamage}
                       disabled={analyzing || !images[0] || !images[1]}
-                      startIcon={analyzing ? <CircularProgress size={24} color="inherit" /> : <AnalyticsIcon />}
-                      sx={{ 
-                        py: 1.5, 
-                        px: 4, 
-                        borderRadius: 2,
-                        background: 'linear-gradient(45deg, #1976d2, #2196f3)',
-                        boxShadow: '0 4px 10px rgba(33, 150, 243, 0.3)',
-                        '&:hover': {
-                          boxShadow: '0 6px 15px rgba(33, 150, 243, 0.4)',
-                        }
-                      }}
+                      sx={{ mt: 2 }}
                     >
-                      {analyzing ? 'Analiz Yapılıyor...' : 'Hasar Analizi Yap'}
+                      {analyzing ? (
+                        <>
+                          <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
+                          Yapay Zeka Analizi Yapılıyor...
+                        </>
+                      ) : (
+                        'Yapay Zeka ile Analiz Et'
+                      )}
                     </Button>
                   </motion.div>
                 </Box>
               </Paper>
-              {/*Analysis Results*/}
+              {/* Analysis Result Section */}
               {analysisResult && (
-                <Grow in={!!analysisResult} timeout={500}>
-                  <Paper
-                    component={motion.div}
-                    whileHover={{ boxShadow: '0 14px 35px rgba(0, 0, 0, 0.07)' }}
-                    elevation={3}
+                <Fade in={!!analysisResult}>
+                  <Paper 
+                    elevation={3} 
                     sx={{ 
-                      p: 3,
-                      mb: 4,
+                      p: 3, 
+                      mt: 4, 
                       borderRadius: 2,
-                      background: 'linear-gradient(45deg, #1976d2, #2196f3)',
-                      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
+                      border: '1px solid #2196f3',
+                      position: 'relative',
+                      overflow: 'hidden'
                     }}
                   >
-                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3, color: '#1976d2' }}>
-                      <AnalyticsIcon sx={{ mr: 1 , verticalAlign: 'middle' }} />
-                      Hasar Analizi Sonuçları
+                    <Box sx={{ 
+                      position: 'absolute', 
+                      top: 0, 
+                      right: 0, 
+                      bgcolor: 'primary.main', 
+                      color: 'white',
+                      px: 2,
+                      py: 0.5,
+                      borderBottomLeftRadius: 8
+                    }}>
+                      Yapay Zeka Analizi
+                    </Box>
+                    
+                    <Typography variant="h5" component="h3" gutterBottom>
+                      Hasar Analiz Sonuçları
                     </Typography>
                     
                     <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
-                      <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <Card sx={{ height: '100%', borderRadius: 2 }}>
-                          <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                              Hasar Oranı
-                            </Typography>
-                            <Box sx={{ position: 'relative', display: 'inline-flex', width: '100%', justifyContent: 'center', my: 2 }}>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" gutterBottom>
+                            Hasar Oranı:
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ 
+                              width: '100%', 
+                              mr: 1, 
+                              bgcolor: 'grey.300',
+                              borderRadius: 5,
+                              height: 10
+                            }}>
                               <Box
                                 sx={{
-                                  position: 'relative',
-                                  display: 'inline-flex',
-                                  width: 200,
-                                  height: 200,
+                                  width: `${analysisResult.damagePercentage}%`,
+                                  height: '100%',
+                                  borderRadius: 5,
+                                  bgcolor: getDamageColor(analysisResult.damagePercentage)
                                 }}
-                              >
-                                <CircularProgress
-                                  variant="determinate"
-                                  value={100}
-                                  size={200}
-                                  thickness={4}
-                                  sx={{ color: theme.palette.grey[200], position: 'absolute' }}
-                                />
-                                <motion.div
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  transition={{ delay: 0.3, duration: 0.5 }}
-                                >
-                                  <CircularProgress
-                                    variant="determinate"
-                                    value={analysisResult.damagePercentage}
-                                    size={200}
-                                    thickness={4}
-                                    sx={{ color: getDamageColor(analysisResult.damagePercentage) }}
-                                  />
-                                </motion.div>
-                                <Box
-                                  sx={{
-                                    top: 0,
-                                    left: 0,
-                                    bottom: 0,
-                                    right: 0,
-                                    position: 'absolute',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                  }}
-                                >
-                                  <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    transition={{ delay: 0.5, type: "spring", stiffness: 260, damping: 20 }}
-                                  >
-                                    <Typography
-                                      variant="h4"
-                                      component="div"
-                                      color={getDamageColor(analysisResult.damagePercentage)}
-                                      fontWeight="bold"
-                                    >
-                                      {`${Math.round(analysisResult.damagePercentage)}%`}
-                                    </Typography>
-                                  </motion.div>
-                                </Box>
-                              </Box>
+                              />
                             </Box>
-                            <Typography variant="body1" align="center" sx={{ mt: 2 }}>
-                              {analysisResult.damagePercentage < 20
-                                ? 'Hafif Hasar'
-                                : analysisResult.damagePercentage < 50
-                                ? 'Orta Hasar'
-                                : 'Ağır Hasar'}
-                            </Typography>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <Card sx={{ height: '100%', borderRadius: 2 }}>
-                          <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                              Değerlendirme ve Öneriler
-                            </Typography>
-                            <Box sx={{ mt: 2 }}>
-                              {analysisResult.recommendations.map((rec, idx) => (
-                                <motion.div
-                                  key={idx}
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: idx * 0.1 + 0.3, duration: 0.5 }}
-                                >
-                                  <Box 
-                                    sx={{ 
-                                      mb: 2, 
-                                      p: 2, 
-                                      borderRadius: 1, 
-                                      bgcolor: 'rgba(25, 118, 210, 0.04)',
-                                      border: '1px solid rgba(25, 118, 210, 0.1)'
-                                    }}
-                                  >
-                                    <Typography variant="body1">
-                                      {rec}
-                                    </Typography>
-                                  </Box>
-                                </motion.div>
-                              ))}
+                            <Box sx={{ minWidth: 35 }}>
+                              <Typography variant="body2" color="textSecondary">
+                                {`${analysisResult.damagePercentage}%`}
+                              </Typography>
                             </Box>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
+                          </Box>
+                        </Box>
+                        
+                        <Typography variant="subtitle1" gutterBottom>
+                          Hasar Şiddeti:
+                        </Typography>
+                        <Chip 
+                          label={analysisResult.severity} 
+                          color={
+                            analysisResult.severity === 'Hafif' ? 'success' :
+                            analysisResult.severity === 'Orta' ? 'warning' :
+                            analysisResult.severity === 'Orta-Ağır' ? 'error' : 'error'
+                          }
+                          sx={{ mb: 3 }}
+                        />
+                        
+                        <Typography variant="subtitle1" gutterBottom>
+                          Yapay Zeka Önerileri:
+                        </Typography>
+                        <List>
+                          {analysisResult.recommendations.map((rec, index) => (
+                            <ListItem key={index} sx={{ py: 0.5 }}>
+                              <ListItemIcon sx={{ minWidth: 36 }}>
+                                <InfoIcon color="primary" fontSize="small" />
+                              </ListItemIcon>
+                              <ListItemText primary={rec} />
+                            </ListItem>
+                          ))}
+                        </List>
+                      </Grid>
+                      
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="subtitle1" gutterBottom>
+                          Yapay Zeka Görsel Analizi:
+                        </Typography>
+                        {analysisResult.processedImages && (
+                          <Box sx={{ mt: 2 }}>
+                            <img 
+                              src={`${API_BASE_URL}/${analysisResult.processedImages.difference.replace(/\\/g, '/')}`} 
+                              alt="Hasar Fark Analizi" 
+                              style={{ 
+                                width: '100%', 
+                                borderRadius: 8,
+                                border: '1px solid #ddd'
+                              }} 
+                            />
+                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
+                              Yapay Zeka Tarafından Tespit Edilen Hasar Bölgeleri
+                            </Typography>
+                          </Box>
+                        )}
+                      </Grid>
                     </Grid>
                     
-                    <Grid item xs={12}>
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5, duration: 0.5 }}
+                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button 
+                        variant="outlined" 
+                        color="primary" 
+                        startIcon={<TimelineIcon />}
+                        onClick={() => {
+                          // Save analysis to history or generate report
+                        }}
                       >
-                        <Card sx={{ borderRadius: 2 }}>
-                          <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                              Detaylı Analiz
-                            </Typography>
-                            <Grid container spacing={2} sx={{ mt: 1 }}>
-                              {Object.entries(analysisResult.details || {}).map(([key, value], idx) => (
-                                <Grid item xs={12} sm={6} md={4} key={key}>
-                                  <motion.div
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: idx * 0.1 + 0.5, duration: 0.5 }}
-                                  >
-                                    <Box 
-                                      sx={{ 
-                                        p: 2, 
-                                        borderRadius: 1, 
-                                        bgcolor: 'rgba(0, 0, 0, 0.02)',
-                                        height: '100%',
-                                        transition: 'all 0.3s ease',
-                                        '&:hover': {
-                                          bgcolor: 'rgba(0, 0, 0, 0.04)',
-                                          transform: 'translateY(-2px)'
-                                        }
-                                      }}
-                                    >
-                                      <Typography variant="subtitle2" color="textSecondary">
-                                        {key}
-                                      </Typography>
-                                      <Typography variant="body1" sx={{ mt: 1, fontWeight: 'medium' }}>
-                                        {typeof value === 'number' ? value.toFixed(2) : value.toString()}
-                                      </Typography>
-                                    </Box>
-                                  </motion.div>
-                                </Grid>
-                              ))}
-                            </Grid>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    </Grid>
-                  </Grid>
+                        Rapor Oluştur
+                      </Button>
+                    </Box>
                   </Paper>
-
-                </Grow>
+                </Fade>
               )}
               <Paper 
               component={motion.div}
@@ -810,7 +738,7 @@ function MainPage() {
                             <Typography variant="subtitle1" sx={{ fontWeight: 'medium', mb: 1 }}>
                               {analysis.location?.address || 'Konum bilgisi yok'}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
                               {formatDate(analysis.createdAt || new Date())}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
@@ -848,31 +776,18 @@ function MainPage() {
       </Container>
       <Footer />
       
-      {/* Map Dialog */}
+      {/* Image Source Selector Dialog */}
       <Dialog
         open={mapDialogOpen}
         onClose={() => setMapDialogOpen(false)}
-        maxWidth="lg"
+        maxWidth="md"
         fullWidth
       >
-        <DialogTitle>
-          Haritadan Görüntü Seç
-          <IconButton
-            aria-label="close"
-            onClick={() => setMapDialogOpen(false)}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: (theme) => theme.palette.grey[500],
-            }}
-          >
-            <DeleteIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          <MapImageSelector onImageSelect={handleMapImageSelect} onClose={() => setMapDialogOpen(false)} />
-        </DialogContent>
+        <ImageSourceSelector 
+          open={mapDialogOpen} 
+          onClose={() => setMapDialogOpen(false)} 
+          onImageSelect={handleMapImageSelect} 
+        />
       </Dialog>
       
       {/* Analysis Detail Dialog */}

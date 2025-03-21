@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth0 } from '@auth0/auth0-react'
+import { useAuth } from './context/AuthContext'
 import './App.css'
 import LoginPage from './pages/LoginPage'
 import MainPage from './pages/MainPage'
@@ -8,7 +8,7 @@ import ProfilePage from './pages/ProfilePage';
 import { CircularProgress, Box } from '@mui/material'
 
 function App() {
-  const { isAuthenticated, isLoading } = useAuth0();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (

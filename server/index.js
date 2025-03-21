@@ -11,7 +11,7 @@ const app = express();
 
 // CORS ayarları
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5175', 'https://earthengine.googleapis.com'],
+    origin: ['http://localhost:5173', 'http://localhost:5175', 'https://earthengine.googleapis.com', 'https://maps.googleapis.com'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -21,7 +21,8 @@ app.use(cors({
 // Diğer middleware'ler
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    contentSecurityPolicy: false
 }));
 app.use(morgan('dev')); // Loglama için
 app.use(cookieParser());
@@ -38,10 +39,7 @@ if (!fs.existsSync('./uploads')) {
 }
 
 // MongoDB bağlantısı
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/gitgudweb', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/gitgudweb')
 .then(() => console.log('MongoDB bağlantısı başarılı'))
 .catch(err => console.error('MongoDB bağlantı hatası:', err));
 
@@ -67,13 +65,25 @@ const tempUserMiddleware = (req, res, next) => {
 const analysisRoutes = require('./routes/analysis');
 const earthEngineRoutes = require('./routes/earth-engine');
 const userRoutes = require('./routes/user');
+const googleMapsRoutes = require('./routes/google-maps');
 
-// Geçici olarak auth korumasız rotalar (geliştirme sırasında)
-app.use('/api/analysis', tempUserMiddleware, analysisRoutes);
-app.use('/api/earth-engine', tempUserMiddleware, earthEngineRoutes);
+// API rotaları
+app.use('/api/earth-engine', earthEngineRoutes);
+app.use('/api/google-maps', googleMapsRoutes);
 
 // Auth0 korumalı rotalar
-app.use('/api/user', userRoutes);
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api/analysis', auth0Protected, analysisRoutes);
+} else {
+  app.use('/api/analysis', analysisRoutes);
+}
+
+// Auth0 korumalı kullanıcı rotaları
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api/user', auth0Protected, userRoutes);
+} else {
+  app.use('/api/user', userRoutes);
+}
 
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to GitGudWeb API!' });

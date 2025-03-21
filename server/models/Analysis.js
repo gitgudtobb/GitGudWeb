@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const analysisSchema = new mongoose.Schema({
-  userId: {
+  user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
@@ -19,30 +19,30 @@ const analysisSchema = new mongoose.Schema({
     address: String
   },
   images: {
-    before: {
-      url: String,
-      timestamp: Date
-    },
-    after: {
-      url: String,
-      timestamp: Date
-    }
+    before: String,
+    after: String
   },
   results: {
-    damagePercentage: {
-      type: Number,
-      required: true
-    },
-    severity: {
+    damageLevel: {
       type: String,
-      enum: ['Hafif', 'Orta', 'Orta-Ağır', 'Ağır'],
-      required: true
+      enum: ['minor', 'moderate', 'severe', 'critical'],
     },
+    damagePercentage: {
+      type: Number
+    },
+    affectedAreas: [String],
     recommendations: [String],
-    processedImages: {
-      difference: String,
-      highlighted: String
+    riskAssessment: String,
+    estimatedRepairCost: {
+      min: Number,
+      max: Number,
+      currency: String
     }
+  },
+  metadata: {
+    buildingType: String,
+    constructionYear: Number,
+    floorCount: Number
   },
   createdAt: {
     type: Date,
@@ -52,12 +52,6 @@ const analysisSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'completed', 'failed'],
     default: 'pending'
-  },
-  metadata: {
-    buildingType: String,
-    constructionYear: Number,
-    floorCount: Number,
-    notes: String
   }
 });
 
@@ -65,7 +59,7 @@ const analysisSchema = new mongoose.Schema({
 analysisSchema.index({ location: '2dsphere' });
 
 // Kullanıcı bazlı sorgular için indeks
-analysisSchema.index({ userId: 1, createdAt: -1 });
+analysisSchema.index({ user: 1, createdAt: -1 });
 
 const Analysis = mongoose.model('Analysis', analysisSchema);
 

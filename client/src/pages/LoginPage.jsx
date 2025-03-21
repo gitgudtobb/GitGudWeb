@@ -1,4 +1,4 @@
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
 import {
   Box,
   Container,
@@ -17,11 +17,11 @@ import EmailIcon from '@mui/icons-material/Email';
 import { motion } from 'framer-motion';
 
 function LoginPage() {
-  const { loginWithRedirect, isAuthenticated, isLoading } = useAuth0();
+  const { loginWithAuth0, isLoading } = useAuth();
 
-  // Email-şifre girişi için
+  // Email-şifre girişi için Auth0
   const handleEmailLogin = () => {
-    loginWithRedirect({
+    loginWithAuth0({
       authorizationParams: {
         connection: 'Username-Password-Authentication',
         ui_locales: 'tr'
@@ -31,7 +31,7 @@ function LoginPage() {
 
   // Google ile giriş için
   const handleGoogleLogin = () => {
-    loginWithRedirect({
+    loginWithAuth0({
       authorizationParams: {
         connection: 'google-oauth2',
         ui_locales: 'tr'
