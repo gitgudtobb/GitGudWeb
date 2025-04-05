@@ -16,7 +16,11 @@ createRoot(document.getElementById('root')).render(
       authorizationParams={{
         redirect_uri: `${origin}/`,
         audience: "https://gitgudweb-api",
-        scope: "openid profile email"
+        scope: "openid profile email",
+        // Giriş sayfası metinlerini özelleştirme
+        ui_locales: 'tr',
+        login_hint: 'GITGUD Afet Hasar Tespit Sistemi',
+        screen_hint: 'login'
       }}
       cacheLocation="localstorage"
     >

@@ -29,13 +29,33 @@ export const AuthProvider = ({ children }) => {
     return await getAccessTokenSilently();
   };
 
+  // u00d6zelleu015ftirilmiu015f login fonksiyonu
+  const loginWithAuth0 = (options = {}) => {
+    // Auth0'nun varsayu0131lan 'Log in to dev-...' mesaju0131 yerine
+    // dogrudan giriş işlemini bau015flatma
+    return loginWithRedirect({
+      ...options,
+      authorizationParams: {
+        ...options.authorizationParams,
+        ui_locales: 'tr',
+        login_hint: 'GITGUD Afet Hasar Tespit Sistemi',
+        screen_hint: 'login',
+        prompt: 'login'
+      },
+      appState: {
+        returnTo: window.location.origin,
+        ...options.appState
+      }
+    });
+  };
+
   // Context value
   const value = {
     isAuthenticated,
     isLoading,
     user,
     authType: 'auth0',
-    loginWithAuth0: loginWithRedirect,
+    loginWithAuth0,  // u00d6zelleu015ftirilmiu015f fonksiyonu kullan
     logout: auth0Logout,
     getToken,
     getUserProfile

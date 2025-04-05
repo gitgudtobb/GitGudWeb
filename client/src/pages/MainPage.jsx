@@ -296,7 +296,7 @@ function MainPage() {
   )
 
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <Box className="main-page" sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <Header />
         
         <Container component="main" maxWidth="lg" sx={{ flexGrow: 1, py: 4 }}>
