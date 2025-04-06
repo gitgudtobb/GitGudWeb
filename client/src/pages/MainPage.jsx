@@ -1,3 +1,5 @@
+import { useDropzone } from 'react-dropzone';
+import DragDropUploader from "../components/DragDropUploader.jsx";
 import { useState, useCallback, useEffect } from 'react'
 import { 
   Box, 
@@ -68,6 +70,50 @@ function MainPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
+    const handleFilesAdded = (acceptedFiles) => {
+    const file = acceptedFiles[0]; 
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const newImages = [...images];
+        newImages[activeImageIndex] = e.target.result;
+        setImages(newImages);
+        setAnalysisResult(null);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const onDrop = (acceptedFiles, index) => {  
+    const file = acceptedFiles[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const newImages = [...images];
+        newImages[index] = e.target.result;
+        setImages(newImages);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const {                               
+    getRootProps: getRootProps1,
+    getInputProps: getInputProps1
+  } = useDropzone({
+    onDrop: (files) => onDrop(files, 0),
+    multiple: false,
+    accept: 'image/*',
+  });
+  
+  const {                            
+    getRootProps: getRootProps2,
+    getInputProps: getInputProps2
+  } = useDropzone({
+    onDrop: (files) => onDrop(files, 1),
+    multiple: false,
+    accept: 'image/*',
+  });
   const handleImageUpload = (index) => (event) => {
     const file = event.target.files[0]
     if (file) {
@@ -444,24 +490,44 @@ function MainPage() {
                                   <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
                                     veya haritadan seçin
                                   </Typography>
+                                  {/* Drag & Drop + Dosya Seçme */}
+                                 
                                   <Stack direction="row" spacing={2}>
-                                    <Button
-                                      variant="contained"
-                                      component="label"
-                                      startIcon={<CloudUploadIcon />}
-                                    >
-                                      Dosya Seç
-                                      <input
-                                        type="file"
-                                        hidden
-                                        accept="image/*"
-                                        onChange={handleImageUpload(index)}
-                                      />
-                                    </Button>
+                                  <Box
+                                    {...(index === 0 ? getRootProps1() : getRootProps2())}
+                                    sx={{
+                                      width: '100%',
+                                      display: 'inline-block'
+                                      }}
+                                  >
+                                      <input {...(index === 0 ? getInputProps1() : getInputProps2())} />
+                                      <Button
+                                        variant="contained"
+                                        fullWidth
+                                        startIcon={<CloudUploadIcon />}
+                                        sx={{
+                                          px: 4,           
+                                          py: 2,           
+                                          fontSize: '1rem', 
+                                          minWidth: '180px',
+                                          borderRadius: 2
+                                        }}
+                                      >
+                                        Dosya Seç
+                                      </Button>
+                                    </Box>
+
                                     <Button
                                       variant="outlined"
                                       onClick={handleMapSelect(index)}
                                       startIcon={<MapIcon />}
+                                      sx={{
+                                        px: 2,
+                                        py: 0.3,
+                                        fontSize: '1rem',
+                                        minWidth: '180px',
+                                        borderRadius: 2
+                                      }}
                                     >
                                       Haritadan Seç
                                     </Button>
