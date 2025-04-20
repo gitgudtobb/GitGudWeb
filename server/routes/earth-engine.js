@@ -469,6 +469,7 @@ router.get('/proxy-image', async (req, res) => {
       response.headers['content-type'] || 'image/jpeg'
     );
     res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.setHeader('Access-Control-Allow-Origin', '*');
 
     // Send the file
     res.sendFile(filepath);

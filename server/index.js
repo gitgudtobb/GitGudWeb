@@ -66,10 +66,12 @@ const analysisRoutes = require('./routes/analysis');
 const earthEngineRoutes = require('./routes/earth-engine');
 const userRoutes = require('./routes/user');
 const googleMapsRoutes = require('./routes/google-maps');
+const aiAnalysisRoutes = require('./routes/ai-analysis');
 
 // API rotaları
 app.use('/api/earth-engine', earthEngineRoutes);
 app.use('/api/google-maps', googleMapsRoutes);
+app.use('/api/ai-analysis', aiAnalysisRoutes);
 
 // Auth0 korumalı rotalar
 if (process.env.NODE_ENV === 'production') {

@@ -46,6 +46,7 @@ import ImageSourceSelector from '../components/ImageSourceSelector'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import HeroSection from '../components/HeroSection'
+import AIAnalysisPanel from '../components/AIAnalysisPanel'
 import pixelmatch from 'pixelmatch'
 import Pica from 'pica'
 import { useAuth0 } from '@auth0/auth0-react'
@@ -542,30 +543,20 @@ function MainPage() {
                   ))}
                 </Grid>
                 
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      startIcon={<AnalyticsIcon />}
-                      onClick={analyzeDamage}
-                      disabled={analyzing || !images[0] || !images[1]}
-                      sx={{ mt: 2 }}
-                    >
-                      {analyzing ? (
-                        <>
-                          <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
-                          Yapay Zeka Analizi Yapılıyor...
-                        </>
-                      ) : (
-                        'Yapay Zeka ile Analiz Et'
-                      )}
-                    </Button>
-                  </motion.div>
-                </Box>
+                {/* AI Analiz Paneli */}
+                <AIAnalysisPanel 
+                  preImage={images[0]} 
+                  postImage={images[1]}
+                  onAnalysisComplete={(results) => {
+                    console.log('AI analiz sonuçları:', results);
+                    // Burada analiz sonuçlarıyla ilgili işlemler yapılabilir
+                    setNotification({
+                      open: true,
+                      message: `Analiz tamamlandı! ${results.total_buildings} bina tespit edildi.`,
+                      severity: 'success'
+                    });
+                  }}
+                />
               </Paper>
               {/* Analysis Result Section */}
               {analysisResult && (
