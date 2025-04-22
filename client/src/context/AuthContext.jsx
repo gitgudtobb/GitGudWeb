@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
+import axios from 'axios';
 
 // Authentication context
 const AuthContext = createContext();
@@ -9,6 +10,9 @@ export const useAuth = () => useContext(AuthContext);
 
 // Auth provider component
 export const AuthProvider = ({ children }) => {
+  // State to track if user was registered in the database
+  const [userRegistered, setUserRegistered] = useState(false);
+  
   // Auth0 hooks
   const { 
     isAuthenticated, 
@@ -28,6 +32,32 @@ export const AuthProvider = ({ children }) => {
   const getToken = async () => {
     return await getAccessTokenSilently();
   };
+  
+  // Register user in the database when they log in
+  useEffect(() => {
+    const registerUser = async () => {
+      if (isAuthenticated && user && !userRegistered && !isLoading) {
+        try {
+          // Get access token
+          const token = await getAccessTokenSilently();
+          
+          // Call the API endpoint to register user
+          const response = await axios.get('/api/auth0/me', {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          
+          console.log('User registered in database:', response.data);
+          setUserRegistered(true);
+        } catch (error) {
+          console.error('Error registering user in database:', error);
+        }
+      }
+    };
+    
+    registerUser();
+  }, [isAuthenticated, user, isLoading, userRegistered, getAccessTokenSilently]);
 
   // u00d6zelleu015ftirilmiu015f login fonksiyonu
   const loginWithAuth0 = (options = {}) => {
@@ -38,7 +68,7 @@ export const AuthProvider = ({ children }) => {
       authorizationParams: {
         ...options.authorizationParams,
         ui_locales: 'tr',
-        login_hint: 'GITGUD Afet Hasar Tespit Sistemi',
+        // login_hint parametresi kaldırıldı - email alanı boş olacak
         screen_hint: 'login',
         prompt: 'login'
       },

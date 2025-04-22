@@ -1,5 +1,7 @@
 const { expressjwt: jwt } = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
+
+// User modelini import et
 const User = require('../models/User');
 
 // Auth0 middleware - token doğrulama
@@ -16,7 +18,7 @@ const checkJwt = jwt({
   credentialsRequired: true // Token zorunlu
 });
 
-// Kullanıcı bilgilerini MongoDB'den alıp req.user'a ekleyen middleware
+// Auth0 kimlik doğrulama middleware'i
 const getUserFromAuth0 = async (req, res, next) => {
   try {
     console.log('Auth0 middleware çalışıyor...');
@@ -86,30 +88,57 @@ const getUserFromAuth0 = async (req, res, next) => {
       // Öncelikle Auth0 Management API ile kullanıcı profilini almayı deneyelim
       // Ya da Auth0 tarafından gönderilen ektralarda arayabiliriz
       
-      // Burada Auth0 token içinde OAuth yetkilendirmesi var mı kontrol ediyoruz
-      if (req.auth.email) {
-        realUserEmail = req.auth.email;
-        console.log('Google OAuth - Auth0 email alanından email alındı:', realUserEmail);
-      } 
-      // Bazen email bilgisi picture alanında gizli olabilir
-      else if (req.auth.picture && req.auth.picture.includes('=')) {
-        // Google'ın avatar URL'lerinde çoğunlukla email görülebilir
-        // örnek: https://lh3.googleusercontent.com/a/ACg8ocLFN8bBHe-p9f-M1LHdJ7nHl8ISzcYNGGHBDRgVoeVa=s96-c
-        const emailPart = req.auth.picture.split('=')[0].split('/').pop();
-        if (emailPart && emailPart.length > 5) {
-          realUserEmail = `${emailPart}@gmail.com`;
-          console.log('Google OAuth - Avatar URL\'den email tahmin edildi:', realUserEmail);
-        }
+            // Google hesabı için hard-coded email'leri kaldırıyoruz ve kullanıcı girişinden alacağız
+      
+      console.log('
+Google OAuth ile giriş yapan kullanıcı:', auth0Id);
+      console.log('---- AUTH ID PARSING ----');
+      const googleId = auth0Id.split('|')[1];
+      console.log('Google ID:', googleId);
+      
+      // MANUAL EMAIL ENTRY - Kullanıcı profil güncellemesinde email girebilir
+      // Hard-coded e-postayı kaldırıp kullanıcı girişin aşamasında gereken işlemler:
+      
+      // 1. Kullanıcının daha önce girdiği bir email var mı kontrol et
+      let existingUser = null;
+      try {
+        existingUser = await User.findOne({ auth0Id });
+        console.log('Mevcut kullanıcı kontrol ediliyor:', existingUser ? 'Bulundu' : 'Bulunamadı');
+      } catch (err) {
+        console.error('Veritabanı sorgusunda hata:', err);
       }
-      // Basit dönüştürme: auth0Id içindeki Google ID kısmını alıp gmail.com ekleyebiliriz
-      // NOT: Bu gerçek e-posta olmayabilir ancak görüntüleme için bir örnek
+      
+      // 2. Mevcut kullanıcının bir realEmail'i var mı?
+      if (existingUser && existingUser.realEmail && existingUser.realEmail.includes('@')) {
+        realUserEmail = existingUser.realEmail;
+        console.log('Kullanıcının kayıtlı gerçek e-postası kullanılıyor:', realUserEmail);
+      }
+      // 3. Token içinde email var mı?
+      else if (req.auth.email) {
+        realUserEmail = req.auth.email;
+        console.log('Auth0 token içinden email kullanılıyor:', realUserEmail);
+      }
+      // 4. Session kullanıcı bilgilerinde email var mı?
+      else if (req.session && req.session.userEmail) {
+        realUserEmail = req.session.userEmail;
+        console.log('Session içinden email kullanılıyor:', realUserEmail);
+      }
+      // 5. Geçici bir email oluştur, kullanıcı daha sonra güncelleyebilir
       else {
-        const googleId = auth0Id.split('|')[1];
+        // Kullanıcı giriş yaptığında sorulacak email için işaretleme
+        console.log('Kullanıcının gerçek email'i bulunamadı, manual email girişi gerekiyor');
+        
+        // Kullanıcıdan email istemek için manuel güncelleme gerekiyor işareti
+        realUserEmail = 'email-guncelleme-gerekli';
+        
+        // Geçici ID temelli email oluştur, sadece tekilliği sağlamak için
         if (googleId) {
           realUserEmail = `${googleId}@gmail.com`;
-          console.log('Google OAuth - ID\'den email oluşturuldu:', realUserEmail);
+          console.log('Geçici email oluşturuldu:', realUserEmail);
         }
       }
+      
+      // Kullanıcıya email güncelleme seçeneği göstermek için client'a bildirim gönderilecek
     }
     // Normal Auth0 kullanıcıları için standart e-posta algılama
     else {

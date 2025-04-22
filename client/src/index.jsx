@@ -19,7 +19,7 @@ createRoot(document.getElementById('root')).render(
         scope: "openid profile email",
         // Giriş sayfası metinlerini özelleştirme
         ui_locales: 'tr',
-        login_hint: 'GITGUD Afet Hasar Tespit Sistemi',
+        // login_hint parametresi kaldırıldı
         screen_hint: 'login'
       }}
       cacheLocation="localstorage"

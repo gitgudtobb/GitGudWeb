@@ -73,19 +73,21 @@ app.use('/api/earth-engine', earthEngineRoutes);
 app.use('/api/google-maps', googleMapsRoutes);
 app.use('/api/ai-analysis', aiAnalysisRoutes);
 
-// Auth0 korumalı rotalar
-if (process.env.NODE_ENV === 'production') {
-  app.use('/api/analysis', auth0Protected, analysisRoutes);
-} else {
-  app.use('/api/analysis', analysisRoutes);
-}
+// Auth0 profil endpoint'i - bu mödüle DEVELOPMENT ve PRODUCTION modunda her zaman çalışır
+// Kullanıcı giriş yaptığında, Frontend tarafından otomatik olarak çağrılarak kullanıcıyı veritabanına kaydeder
+app.get('/api/auth0/me', auth0Protected, (req, res) => {
+  // Kullanıcı zaten middleware tarafından oluşturuldu, sadece döndür
+  res.json({
+    user: req.user,
+    message: 'Auth0 ile kullanıcı bilgileri başarıyla alındı ve veritabanına kaydedildi'
+  });
+});
 
-// Auth0 korumalı kullanıcı rotaları
-if (process.env.NODE_ENV === 'production') {
-  app.use('/api/user', auth0Protected, userRoutes);
-} else {
-  app.use('/api/user', userRoutes);
-}
+// Auth0 korumalı rotalar - development modunda da koruma ekledik
+app.use('/api/analysis', auth0Protected, analysisRoutes);
+
+// Auth0 korumalı kullanıcı rotaları - development modunda da koruma ekledik
+app.use('/api/user', auth0Protected, userRoutes);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to GitGudWeb API!' });

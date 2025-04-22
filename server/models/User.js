@@ -22,6 +22,11 @@ const userSchema = new mongoose.Schema({
         },
         sparse: true // Boş değerlere izin ver
     },
+    realEmail: {
+        type: String,
+        trim: true,
+        lowercase: true
+    },
     name: {
         type: String,
         trim: true

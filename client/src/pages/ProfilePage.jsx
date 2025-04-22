@@ -173,9 +173,27 @@ function ProfilePage() {
         <Card elevation={3} sx={{ mb: 4 }}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h5">
-                Kullanıcı Profili
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Button 
+                  variant="contained" 
+                  color="primary"
+                  onClick={() => window.location.href = '/'}
+                  sx={{ 
+                    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                    boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #21CBF3 30%, #2196F3 90%)',
+                      transform: 'scale(1.05)'
+                    }
+                  }}
+                >
+                  ← Ana Sayfaya Dön
+                </Button>
+                <Typography variant="h5">
+                  Kullanıcı Profili
+                </Typography>
+              </Box>
               <Button 
                 variant={editMode ? "contained" : "outlined"} 
                 color={editMode ? "secondary" : "primary"}
@@ -230,7 +248,7 @@ function ProfilePage() {
                       label="E-posta"
                       name="email"
                       type="email"
-                      value={dbUser?.email || ''}
+                      value={dbUser?.displayEmail || dbUser?.realEmail || dbUser?.email || ''}
                       disabled={true}
                       helperText="E-posta adresi Auth0 hesabınızdan alınır ve değiştirilemez"
                     />

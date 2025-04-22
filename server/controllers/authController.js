@@ -22,10 +22,18 @@ const auth0Auth = {
       const userObj = req.user.toObject ? req.user.toObject() : req.user;
       const { password, ...userWithoutPassword } = userObj;
       
-      res.json({
+      // Gerçek e-posta varsa onu kullan, yoksa normal e-postayı kullan
+      const responseData = {
         ...userWithoutPassword,
         authType: 'auth0'
-      });
+      };
+      
+      // Eğer gerçek e-posta varsa, görüntüleme için onu kullan
+      if (req.user.realEmail) {
+        responseData.displayEmail = req.user.realEmail;
+      }
+      
+      res.json(responseData);
     } catch (error) {
       console.error('Auth0 profile error:', error);
       res.status(500).json({ 
@@ -44,15 +52,46 @@ const auth0Auth = {
       
       // Email güncellemesini kaldırdık - Auth0 ile senkronizasyon sorunlarını önlemek için
       
+      // Kullanıcı adı değiştirilmişse, önce benzersiz olup olmadığını kontrol et
+      if (username && username !== req.user.username) {
+        const existingUser = await User.findOne({ username });
+        
+        // Eğer başka bir kullanıcı aynı username'i kullanıyorsa hata dön
+        if (existingUser && existingUser._id.toString() !== userId.toString()) {
+          return res.status(400).json({ 
+            error: 'Kullanıcı adı zaten kullanımda',
+            field: 'username',
+            message: 'Lütfen farklı bir kullanıcı adı seçin'
+          });
+        }
+      }
+      
+      // Güncelleme verilerini hazırla
+      const updateData = {};
+      
+      // Sadece gönderilen alanları güncelle, boş alanları gönderme
+      if (username) updateData.username = username;
+      if (name) updateData.name = name;
+      if (bio !== undefined) updateData.bio = bio;
+      if (phone !== undefined) updateData.phone = phone;
+      if (address !== undefined) updateData.address = address;
+      
+      // Bio alanında e-posta varsa, realEmail alanına kaydet
+      if (bio && bio.includes('@') && bio.includes('.')) {
+        // Email formatını kontrol et (basit bir kontrol)
+        const emailRegex = /[^\s@]+@[^\s@]+\.[^\s@]+/;
+        const match = bio.match(emailRegex);
+        
+        if (match) {
+          const possibleEmail = match[0];
+          updateData.realEmail = possibleEmail;
+          console.log(`Bio'dan olası e-posta adresi bulundu: ${possibleEmail}`);
+        }
+      }
+      
       const updatedUser = await User.findByIdAndUpdate(
         userId,
-        { 
-          username, 
-          name, 
-          bio, 
-          phone, 
-          address 
-        },
+        updateData,
         { new: true, runValidators: true }
       );
       
@@ -60,7 +99,7 @@ const auth0Auth = {
         return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
       }
       
-      res.json({
+      const responseData = {
         _id: updatedUser._id,
         username: updatedUser.username,
         name: updatedUser.name,
@@ -70,7 +109,14 @@ const auth0Auth = {
         phone: updatedUser.phone,
         address: updatedUser.address,
         createdAt: updatedUser.createdAt
-      });
+      };
+      
+      // Eğer gerçek e-posta varsa, görüntüleme için onu kullan
+      if (updatedUser.realEmail) {
+        responseData.displayEmail = updatedUser.realEmail;
+      }
+      
+      res.json(responseData);
     } catch (error) {
       console.error('Profil güncelleme hatası:', error);
       res.status(500).json({ error: 'Profil güncellenirken bir hata oluştu', details: error.message });
