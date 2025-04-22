@@ -47,6 +47,9 @@ const AnalysisDetailModal = ({
   // Analiz yoksa modal gösterme
   if (!analysis) return null;
 
+  // DEBUG: Log the incoming analysis prop
+  console.log('AnalysisDetailModal received analysis:', analysis);
+
   // Hasar seviyelerine göre renk ve ikon atamaları
   const damageConfig = {
     'no-damage': {
@@ -90,9 +93,22 @@ const AnalysisDetailModal = ({
     });
   };
 
-  // Analiz tipini belirle
-  const isAIAnalysis = !!analysis.masked_image;
+  // Analiz tipini belirle ve konsola yazdır
+  const isAIAnalysis = !!analysis.masked_image || !!analysis.image_id;
   const isTraditionalAnalysis = !!analysis.beforeImageUrl && !!analysis.afterImageUrl;
+  
+  console.log('AnalysisDetailModal - Analiz:', {
+    id: analysis._id,
+    name: analysis.name,
+    isAIAnalysis,
+    isTraditionalAnalysis,
+    hasStatistics: !!analysis.statistics,
+    hasBuildings: !!analysis.buildings,
+    hasMaskedImage: !!analysis.masked_image,
+    hasImageId: !!analysis.image_id,
+    totalBuildings: analysis.total_buildings,
+    createdAt: analysis.createdAt
+  });
 
   // Tab değişikliğini işle
   const handleTabChange = (event, newValue) => {
@@ -127,7 +143,7 @@ const AnalysisDetailModal = ({
             <BarChartIcon sx={{ mr: 1 }} />
           )}
           <Typography variant="h6" component="div">
-            {analysis.name || `Analiz #${analysis._id?.substring(0, 6)}`}
+            {analysis.name || `Analiz #${typeof analysis._id === 'string' ? analysis._id.substring(0, 6) : ''}`}
           </Typography>
         </Box>
         <IconButton
@@ -425,7 +441,7 @@ const AnalysisDetailModal = ({
                   </Card>
                 </Grid>
                 
-                {analysis.results && analysis.results.diffImageUrl && (
+                {normAnalysis.results && normAnalysis.results.diffImageUrl && (
                   <Grid item xs={12}>
                     <Card sx={{ borderRadius: 2, overflow: 'hidden', mt: 2 }}>
                       <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
@@ -454,28 +470,40 @@ const AnalysisDetailModal = ({
               </Grid>
             ) : isAIAnalysis ? (
               <Card sx={{ borderRadius: 2, overflow: 'hidden' }}>
-                <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
-                  <img 
-                    src={analysis.masked_image} 
-                    alt="AI Hasar Analizi" 
-                    style={{ 
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain'
-                    }}
-                  />
-                </Box>
-                <Box sx={{ p: 2, bgcolor: theme.palette.primary.main, color: 'white' }}>
-                  <Typography variant="subtitle1" fontWeight="medium">
-                    AI Hasar Analizi Görüntüsü
-                  </Typography>
-                  <Typography variant="body2">
-                    Bina hasarları renklerle işaretlenmiştir
-                  </Typography>
-                </Box>
+                {analysis.masked_image ? (
+                  <>
+                    <Box sx={{ position: 'relative', paddingTop: '75%' }}>
+                      <Box
+                        component="img"
+                        src={analysis.masked_image}
+                        alt="Hasar Analizi"
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain'
+                        }}
+                      />
+                    </Box>
+                    <Box sx={{ p: 2, bgcolor: theme.palette.primary.main, color: 'white' }}>
+                      <Typography variant="subtitle1" fontWeight="medium">
+                        Bina hasarları renklerle işaretlenmiştir
+                      </Typography>
+                    </Box>
+                  </>
+                ) : (
+                  <Box sx={{ p: 5, textAlign: 'center' }}>
+                    <InfoIcon sx={{ fontSize: 60, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
+                    <Typography variant="h6" color="textSecondary" gutterBottom>
+                      Görüntü işleniyor
+                    </Typography>
+                    <Typography color="textSecondary">
+                      Analiz görüntüsü henüz hazır değil. Lütfen daha sonra tekrar deneyin.
+                    </Typography>
+                  </Box>
+                )}
               </Card>
             ) : (
               <Box sx={{ p: 3, textAlign: 'center' }}>

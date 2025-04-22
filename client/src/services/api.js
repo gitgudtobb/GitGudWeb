@@ -148,7 +148,7 @@ export const useApi = () => {
     },
     
     // Analiz işlemleri
-    getAnalyses: () => fetchWithAuth('/analysis'),
+    getAnalyses: () => fetchWithAuth('/analysis/my'),
     getAnalysisById: (id) => fetchWithAuth(`/analysis/${id}`),
     createAnalysis: (data) => fetchWithAuth('/analysis', {
       method: 'POST',
@@ -169,12 +169,26 @@ export const useApi = () => {
     }),
     
     // AI analiz işlemleri
-    analyzeDamage: (data) => fetchWithAuth('/ai-analysis/damage-analysis', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    }),
+    analyzeDamage: (data) => {
+      console.log('API: analyzeDamage çağrıldı', data);
+      return fetchWithAuth('/ai-analysis/damage-analysis', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+    },
     checkAIHealth: () => fetchWithAuth('/ai-analysis/health'),
-    getAIAnalyses: () => fetchWithAuth('/ai-analysis/analyses'),
+    getAIAnalyses: () => {
+      console.log('API: getAIAnalyses çağrıldı');
+      return fetchWithAuth('/ai-analysis/analyses')
+        .then(data => {
+          console.log('API: AI analizleri alındı', data);
+          return data;
+        })
+        .catch(error => {
+          console.error('API: AI analizleri alınırken hata', error);
+          throw error;
+        });
+    },
     getAIAnalysisById: (id) => fetchWithAuth(`/ai-analysis/analyses/${id}`),
     cleanupAITempFiles: () => fetchWithAuth('/ai-analysis/cleanup', {
       method: 'POST'

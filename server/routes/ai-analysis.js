@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const Analysis = require('../models/Analysis');
+const { checkJwt, handleJwtErrors, getUserFromAuth0 } = require('../middleware/auth0');
 
 // Python AI API URL
 const AI_API_URL = 'http://localhost:5002';
@@ -35,22 +36,9 @@ router.post('/damage-analysis', async (req, res) => {
             buildings_count: response.data.buildings ? response.data.buildings.length : 0
         });
         
-        // Kullanıcı ID'sini al
-        let userId;
-        try {
-            // Önce req.user._id'yi kontrol et
-            if (req.user && req.user._id) {
-                userId = req.user._id;
-            } 
-            // Yoksa sabit bir ID kullan
-            else {
-                userId = "65c8a5e8b6a1b86d27a93a1b"; // Sabit test kullanıcısı
-            }
-            console.log('Kullanıcı ID:', userId);
-        } catch (userError) {
-            console.error('Kullanıcı ID alınırken hata:', userError);
-            userId = "65c8a5e8b6a1b86d27a93a1b"; // Hata durumunda yedek ID
-        }
+        // Kullanıcı ID'sini al - Auth0 ile giriş yapmış kullanıcının ID'sini kullan
+        const userId = req.user._id;
+        console.log('Kullanıcı ID:', userId);
         
         // Veri doğrulama - AI sonuçlarının geçerli olduğundan emin ol
         if (!response.data.buildings || !Array.isArray(response.data.buildings)) {
@@ -153,11 +141,11 @@ router.get('/health', async (req, res) => {
 // Kullanıcının AI analizlerini getir
 router.get('/analyses', async (req, res) => {
     try {
-        // Sabit bir kullanıcı ID'si kullan (gerçek uygulamada req.user._id olacak)
-        const userId = req.user ? req.user._id : "65c8a5e8b6a1b86d27a93a1b";
-        console.log('Analizler getiriliyor, kullanıcı ID:', userId);
+        // Auth0 ile giriş yapmış kullanıcının ID'sini kullan
+        const userId = req.user._id;
+        console.log(`Analizler getiriliyor, kullanıcı ID: ${userId}`);
         
-        // Kullanıcının AI analizlerini bul - Yeni model yapısına göre sorgu
+        // Kullanıcının AI analizlerini bul
         const analyses = await Analysis.find({ 
             user: userId,
             image_id: { $exists: true } // Sadece AI analizi olanları getir
@@ -179,24 +167,14 @@ router.get('/analyses', async (req, res) => {
 // Belirli bir AI analizini getir
 router.get('/analyses/:id', async (req, res) => {
     try {
-        // Sabit bir kullanıcı ID'si kullan (gerçek uygulamada req.user._id olacak)
-        const userId = req.user ? req.user._id : "65c8a5e8b6a1b86d27a93a1b";
-        console.log(`Analiz getiriliyor, ID: ${req.params.id}, kullanıcı: ${userId}`);
-        
-        // Analizi bul - Yeni model yapısına göre sorgu
-        const analysis = await Analysis.findOne({
-            _id: req.params.id,
-            user: userId,
-            image_id: { $exists: true } // Sadece AI analizi olanları getir
-        });
+        const userId = req.user._id;
+        const analysis = await Analysis.findOne({ _id: req.params.id, user: userId });
         
         if (!analysis) {
-            console.log(`Analiz bulunamadı: ${req.params.id}`);
-            return res.status(404).json({ error: 'Analiz bulunamadı' });
+            return res.status(404).json({ error: 'Analiz bulunamadı veya bu analize erişim izniniz yok' });
         }
         
-        console.log(`Analiz bulundu: ${analysis._id}`);
-        return res.json(analysis);
+        res.json(analysis);
     } catch (error) {
         console.error('AI analizi getirme hatası:', error.message);
         return res.status(500).json({ 

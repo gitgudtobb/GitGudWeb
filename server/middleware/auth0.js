@@ -3,6 +3,7 @@ const jwksRsa = require('jwks-rsa');
 const User = require('../models/User');
 
 // Auth0 middleware - token doğrulama
+// Auth0 token doğrulama middleware'i - geliştirme modunda opsiyonel
 const checkJwt = jwt({
   secret: jwksRsa.expressJwtSecret({
     cache: true,
@@ -13,21 +14,48 @@ const checkJwt = jwt({
   audience: process.env.AUTH0_AUDIENCE,
   issuer: `https://${process.env.AUTH0_DOMAIN}/`,
   algorithms: ['RS256'],
-  credentialsRequired: true // Token zorunlu
+  credentialsRequired: process.env.NODE_ENV === 'production' // Sadece production'da zorunlu
 });
+
+// Token hatalarını yakalayan middleware
+const handleJwtErrors = (err, req, res, next) => {
+  if (err.name === 'UnauthorizedError') {
+    console.log('Token hatası yakalandı:', err.message);
+    
+    // Geliştirme modunda test için sabit bir kullanıcı ID'si kullan
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Geliştirme modu: Test kullanıcısı kullanılıyor');
+      req.auth = { sub: 'test-user' };
+      return next();
+    }
+    
+    return res.status(401).json({
+      message: 'Kimlik doğrulama başarısız',
+      error: err.message
+    });
+  }
+  return next(err);
+};
 
 // Kullanıcı bilgilerini MongoDB'den alıp req.user'a ekleyen middleware
 const getUserFromAuth0 = async (req, res, next) => {
   try {
     console.log('Auth0 middleware çalışıyor...');
     
-    // Token yoksa veya geçersizse, hata döndür
+    // Token yoksa veya geçersizse, geliştirme modunda test kullanıcısı kullan
     if (!req.auth || !req.auth.sub) {
-      console.log('Token yok veya geçersiz!');
-      return res.status(401).json({
-        message: 'Kimlik doğrulama başarısız',
-        error: 'Geçersiz token'
-      });
+      console.log('Token bilgisi: Token yok veya geçersiz');
+      
+      // Geliştirme modunda test kullanıcısı kullan
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Geliştirme modu: Test kullanıcısı kullanılıyor');
+        req.auth = { sub: 'google-oauth2|103660072598804534880' };
+      } else {
+        return res.status(401).json({
+          message: 'Kimlik doğrulama başarısız',
+          error: 'Geçersiz token'
+        });
+      }
     }
 
     // Eğer zaten bu istek için kullanıcı bilgisi işlendiyse, tekrar işleme
@@ -349,5 +377,6 @@ const getUserFromAuth0 = async (req, res, next) => {
 
 module.exports = {
   checkJwt,
+  handleJwtErrors,
   getUserFromAuth0
 };

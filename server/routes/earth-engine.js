@@ -26,15 +26,29 @@ fs.mkdir(uploadsDir, { recursive: true }).catch(console.error);
 const initializeEarthEngine = async (context) => {
   return new Promise((resolve, reject) => {
     try {
-      console.log('Starting Earth Engine initialization...');
+      console.log('Starting Earth Engine initialization...', context);
       console.log('Using credentials from:', credentialsPath);
+      
+      // Check if Earth Engine is already initialized
+      if (ee.data.getAuthToken()) {
+        console.log('Earth Engine already authenticated, reusing session');
+        resolve();
+        return;
+      }
 
+      // Make sure we have the correct client email
+      if (!privateKey.client_email || !privateKey.private_key) {
+        console.error('Missing required credentials in Earth Engine config');
+        reject(new Error('Invalid Earth Engine credentials configuration'));
+        return;
+      }
+
+      console.log('Authenticating with client email:', privateKey.client_email);
+      
       ee.data.authenticateViaPrivateKey(
         privateKey,
         () => {
-          console.log(
-            'Authentication successful, initializing Earth Engine...'
-          );
+          console.log('Authentication successful, initializing Earth Engine...');
           ee.initialize(
             null,
             null,

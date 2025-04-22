@@ -49,17 +49,7 @@ const { checkJwt, getUserFromAuth0 } = require('./middleware/auth0');
 // Auth0 korumalı rotalar için middleware
 const auth0Protected = [checkJwt, getUserFromAuth0];
 
-// Geçici kullanıcı middleware'i (Auth0 entegrasyonu tam çalışana kadar)
-const tempUserMiddleware = (req, res, next) => {
-    // Eğer Auth0 token'ı varsa, onu kullan
-    if (req.user) {
-        return next();
-    }
-    
-    // Yoksa geçici kullanıcı bilgisi ekle
-    req.user = { _id: '65c8a5e8b6a1b86d27a93a1b' };
-    next();
-};
+// Auth0 entegrasyonu tam olarak çalışıyor, geçici kullanıcı middleware'i artık gerekli değil
 
 // Routes
 const analysisRoutes = require('./routes/analysis');
@@ -71,7 +61,9 @@ const aiAnalysisRoutes = require('./routes/ai-analysis');
 // API rotaları
 app.use('/api/earth-engine', earthEngineRoutes);
 app.use('/api/google-maps', googleMapsRoutes);
-app.use('/api/ai-analysis', aiAnalysisRoutes);
+
+// AI analiz rotaları - Auth0 korumalı
+app.use('/api/ai-analysis', auth0Protected, aiAnalysisRoutes);
 
 // Auth0 profil endpoint'i - bu mödüle DEVELOPMENT ve PRODUCTION modunda her zaman çalışır
 // Kullanıcı giriş yaptığında, Frontend tarafından otomatik olarak çağrılarak kullanıcıyı veritabanına kaydeder
