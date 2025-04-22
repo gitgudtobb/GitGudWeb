@@ -174,6 +174,11 @@ export const useApi = () => {
       body: JSON.stringify(data)
     }),
     checkAIHealth: () => fetchWithAuth('/ai-analysis/health'),
+    getAIAnalyses: () => fetchWithAuth('/ai-analysis/analyses'),
+    getAIAnalysisById: (id) => fetchWithAuth(`/ai-analysis/analyses/${id}`),
+    cleanupAITempFiles: () => fetchWithAuth('/ai-analysis/cleanup', {
+      method: 'POST'
+    }),
     
     // Test endpoint'i
     testApi: () => fetchWithAuth('/test'),

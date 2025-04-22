@@ -41,12 +41,16 @@ import HistoryIcon from '@mui/icons-material/History'
 import CompareIcon from '@mui/icons-material/Compare'
 import WarningIcon from '@mui/icons-material/Warning'
 import InfoIcon from '@mui/icons-material/Info'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import ErrorIcon from '@mui/icons-material/Error'
+import DangerousIcon from '@mui/icons-material/Dangerous'
 import '../App.css'
 import ImageSourceSelector from '../components/ImageSourceSelector'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import HeroSection from '../components/HeroSection'
 import AIAnalysisPanel from '../components/AIAnalysisPanel'
+import AnalysisDetailModal from '../components/AnalysisDetailModal'
 import pixelmatch from 'pixelmatch'
 import Pica from 'pica'
 import { useAuth0 } from '@auth0/auth0-react'
@@ -67,7 +71,9 @@ function MainPage() {
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState(null)
   const [analyses, setAnalyses] = useState([]);
+  const [aiAnalyses, setAiAnalyses] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingAiAnalyses, setLoadingAiAnalyses] = useState(false);
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
@@ -260,6 +266,7 @@ function MainPage() {
   const loadAnalyses = async () => {
     setLoading(true);
     try {
+      // Normal analizleri yükle
       const response = await fetch(`${API_BASE_URL}/api/analysis/my`, {
         method: 'GET',
         headers: {
@@ -276,6 +283,32 @@ function MainPage() {
       const data = await response.json();
       console.log("Yüklenen analizler:", data);
       setAnalyses(data.analyses || []);
+      
+      // AI analizlerini yükle
+      setLoadingAiAnalyses(true);
+      try {
+        const aiResponse = await fetch(`${API_BASE_URL}/api/ai-analysis/analyses`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        
+        if (aiResponse.ok) {
+          const aiData = await aiResponse.json();
+          console.log("Yüklenen AI analizleri:", aiData);
+          setAiAnalyses(aiData || []);
+        } else {
+          console.error('AI analizleri yüklenemedi');
+          setAiAnalyses([]);
+        }
+      } catch (aiError) {
+        console.error('AI analizleri yükleme hatası:', aiError);
+        setAiAnalyses([]);
+      } finally {
+        setLoadingAiAnalyses(false);
+      }
     } catch (error) {
       console.error('Analizleri yükleme hatası:', error);
       setNotification({
@@ -290,6 +323,7 @@ function MainPage() {
   };
 
   const handleAnalysisClick = (analysis) => {
+    console.log('Seçilen analiz:', analysis);
     setSelectedAnalysis(analysis);
   };
 
@@ -313,8 +347,32 @@ function MainPage() {
 
   // Format date function
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return new Date(dateString).toLocaleDateString('tr-TR', options);
+    const date = new Date(dateString);
+    return date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  // Hasar seviyelerine göre renk ve ikon atamaları
+  const damageConfig = {
+    'no-damage': {
+      color: '#4caf50',
+      icon: <CheckCircleIcon />,
+      label: 'Hasar Yok'
+    },
+    'minor-damage': {
+      color: '#ff9800',
+      icon: <WarningIcon />,
+      label: 'Küçük Hasar'
+    },
+    'major-damage': {
+      color: '#f44336',
+      icon: <ErrorIcon />,
+      label: 'Büyük Hasar'
+    },
+    'destroyed': {
+      color: '#9c27b0',
+      icon: <DangerousIcon />,
+      label: 'Yıkılmış'
+    }
   };
 
   const renderHeader = () => (
@@ -736,27 +794,32 @@ function MainPage() {
                   </Box>
                 </motion.div>
               ) : (
-                <Grid container spacing={3}>
-                  {analyses.map((analysis, index) => (
-                    <Grid item xs={12} sm={6} md={4} key={index}>
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1, duration: 0.5 }}
-                        whileHover={{ y: -10 }}
-                      >
-                        <Card 
-                          sx={{ 
-                            cursor: 'pointer',
-                            height: '100%',
-                            borderRadius: 2,
-                            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                            '&:hover': {
-                              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)'
-                            }
-                          }}
-                          onClick={() => handleAnalysisClick(analysis)}
+                <>
+                  {/* Geleneksel Analizler */}
+                  <Typography variant="h5" fontWeight="bold" sx={{ mb: 2, mt: 4 }}>
+                    Geleneksel Analizler
+                  </Typography>
+                  <Grid container spacing={3}>
+                    {analyses.map((analysis, index) => (
+                      <Grid item xs={12} sm={6} md={4} key={index}>
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1, duration: 0.5 }}
+                          whileHover={{ y: -10 }}
                         >
+                          <Card 
+                            sx={{ 
+                              cursor: 'pointer',
+                              height: '100%',
+                              borderRadius: 2,
+                              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                              '&:hover': {
+                                boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)'
+                              }
+                            }}
+                            onClick={() => handleAnalysisClick(analysis)}
+                          >
                           <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
                             <Box
                               component="img"
@@ -771,25 +834,47 @@ function MainPage() {
                                 objectFit: 'cover',
                               }}
                             />
-                            <Box
-                              sx={{
-                                position: 'absolute',
-                                top: 10,
-                                right: 10,
-                                bgcolor: getDamageColor(analysis.results.damagePercentage),
-                                color: 'white',
-                                borderRadius: '50%',
-                                width: 40,
-                                height: 40,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 'bold',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                              }} 
+                            {analysis.results && analysis.results.damagePercentage ? (
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  top: 10,
+                                  right: 10,
+                                  bgcolor: getDamageColor(analysis.results.damagePercentage),
+                                  color: 'white',
+                                  borderRadius: '50%',
+                                  width: 40,
+                                  height: 40,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: 'bold',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                }}
                               >
-                              {`${Math.round(analysis.results.damagePercentage)}%`}
-                            </Box>
+                                {`${Math.round(analysis.results.damagePercentage)}%`}
+                              </Box>
+                            ) : analysis.statistics ? (
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  top: 10,
+                                  right: 10,
+                                  bgcolor: '#4caf50',
+                                  color: 'white',
+                                  borderRadius: '50%',
+                                  width: 40,
+                                  height: 40,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: 'bold',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                }}
+                              >
+                                {`${analysis.total_buildings || 0}`}
+                              </Box>
+                            ) : null}
                           </Box>
                           <CardContent>
                             <Typography variant="subtitle1" sx={{ fontWeight: 'medium', mb: 1 }}>
@@ -799,33 +884,142 @@ function MainPage() {
                               {formatDate(analysis.createdAt || new Date())}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                              <Chip 
-                                size="small" 
-                                label={
-                                  analysis.results.damagePercentage < 20
-                                    ? 'Hafif Hasar'
-                                    : analysis.results.damagePercentage < 50
-                                    ? 'Orta Hasar'
-                                    : 'Ağır Hasar'
-                                }
-                                sx={{ 
-                                  bgcolor: getDamageColor(analysis.results.damagePercentage) + '20',
-                                  color: getDamageColor(analysis.results.damagePercentage),
-                                  fontWeight: 'medium'
-                                }}
-                              />
-                              <Chip 
-                                size="small" 
-                                label={analysis.metadata?.buildingType || 'Bina'}
-                                variant="outlined"
-                              />
+                              {analysis.results && analysis.results.damagePercentage !== undefined ? (
+                                <Chip 
+                                  size="small" 
+                                  label={
+                                    analysis.results.damagePercentage < 20
+                                      ? 'Hafif Hasar'
+                                      : analysis.results.damagePercentage < 50
+                                      ? 'Orta Hasar'
+                                      : 'Ağır Hasar'
+                                  }
+                                  sx={{ 
+                                    bgcolor: getDamageColor(analysis.results.damagePercentage) + '20',
+                                    color: getDamageColor(analysis.results.damagePercentage),
+                                    fontWeight: 'medium'
+                                  }}
+                                />
+                              ) : analysis.statistics ? (
+                                <>
+                                  {Object.entries(analysis.statistics).map(([damage, count]) => (
+                                    count > 0 && (
+                                      <Chip 
+                                        key={damage}
+                                        size="small" 
+                                        label={`${damageConfig[damage]?.label || damage}: ${count}`}
+                                        sx={{ 
+                                          bgcolor: `${damageConfig[damage]?.color}20` || '#99999920',
+                                          color: damageConfig[damage]?.color || '#999999',
+                                          fontWeight: 'medium'
+                                        }}
+                                      />
+                                    )
+                                  ))}
+                                </>
+                              ) : null}
+                              {analysis.metadata?.buildingType && (
+                                <Chip 
+                                  size="small" 
+                                  label={analysis.metadata?.buildingType || 'Bina'}
+                                  variant="outlined"
+                                />
+                              )}
                             </Box>
                           </CardContent>
                         </Card>
                       </motion.div>
                     </Grid>
                   ))}
-                </Grid>
+                  </Grid>
+                  
+                  {/* AI Analizleri */}
+                  <Typography variant="h5" fontWeight="bold" sx={{ mb: 2, mt: 6 }}>
+                    Yapay Zeka Hasar Analizleri
+                  </Typography>
+                  
+                  {loadingAiAnalyses ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : aiAnalyses.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: 4, bgcolor: 'background.paper', borderRadius: 2, p: 3 }}>
+                      <InfoIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                      <Typography variant="h6" color="text.secondary">
+                        Henüz kaydedilmiş AI analizi bulunmamaktadır
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Yeni bir AI analizi yaparak sonuçları burada görüntüleyebilirsiniz
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Grid container spacing={3}>
+                      {aiAnalyses.map((analysis) => (
+                        <Grid item xs={12} sm={6} md={4} key={analysis._id}>
+                          <Card sx={{ 
+                            height: '100%', 
+                            borderRadius: 2,
+                            cursor: 'pointer',
+                            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                            '&:hover': {
+                              transform: 'translateY(-5px)',
+                              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)'
+                            }
+                          }} onClick={() => handleAnalysisClick(analysis)}>
+                            {analysis.masked_image && (
+                              <Box sx={{ position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }}>
+                                <img 
+                                  src={analysis.masked_image} 
+                                  alt="Hasar Analizi" 
+                                  style={{ 
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover'
+                                  }}
+                                />
+                              </Box>
+                            )}
+                            <CardContent>
+                              <Typography variant="h6" gutterBottom>
+                                {analysis.name || `Analiz #${analysis._id.substring(0, 6)}`}
+                              </Typography>
+                              
+                              <Typography variant="body2" color="text.secondary" gutterBottom>
+                                {formatDate(analysis.createdAt)}
+                              </Typography>
+                              
+                              <Box sx={{ mt: 2 }}>
+                                <Typography variant="body2" fontWeight="medium">
+                                  Toplam Bina: {analysis.total_buildings || 0}
+                                </Typography>
+                                
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                                  {analysis.statistics && Object.entries(analysis.statistics).map(([damage, count]) => (
+                                    count > 0 && (
+                                      <Chip 
+                                        key={damage}
+                                        label={`${damageConfig[damage]?.label || damage}: ${count}`}
+                                        size="small"
+                                        sx={{ 
+                                          bgcolor: damageConfig[damage]?.color || '#999', 
+                                          color: 'white',
+                                          fontWeight: 'bold'
+                                        }}
+                                      />
+                                    )
+                                  ))}
+                                </Box>
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  )}
+                </>
               )}
             </Paper>
           </motion.div>
@@ -847,246 +1041,12 @@ function MainPage() {
         />
       </Dialog>
       
-      {/* Analysis Detail Dialog */}
-      <Dialog
+      {/* Analiz Detay Modalı */}
+      <AnalysisDetailModal
         open={!!selectedAnalysis}
+        analysis={selectedAnalysis}
         onClose={() => setSelectedAnalysis(null)}
-        maxWidth="md"
-        fullWidth
-      >
-        {selectedAnalysis && (
-          <>
-            <DialogTitle>
-              Analiz Detayları
-              <IconButton
-                aria-label="close"
-                onClick={() => setSelectedAnalysis(null)}
-                sx={{
-                  position: 'absolute',
-                  right: 8,
-                  top: 8,
-                  color: (theme) => theme.palette.grey[500],
-                }}
-              >
-                <DeleteIcon />
-              </IconButton>
-            </DialogTitle>
-            <DialogContent dividers>
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    Görüntü Karşılaştırması
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ position: 'relative', paddingTop: '56.25%', mb: 1 }}>
-                        <Box
-                          component="img"
-                          src={selectedAnalysis.beforeImageUrl}
-                          alt="Deprem Öncesi"
-                          sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            borderRadius: 1
-                          }}
-                        />
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            bgcolor: 'rgba(0, 0, 0, 0.6)',
-                            color: 'white',
-                            p: 1
-                          }}
-                        >
-                          Deprem Öncesi
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ position: 'relative', paddingTop: '56.25%', mb: 1 }}>
-                        <Box
-                          component="img"
-                          src={selectedAnalysis.afterImageUrl}
-                          alt="Deprem Sonrası"
-                          sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            borderRadius: 1
-                          }}
-                        />
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            bgcolor: 'rgba(0, 0, 0, 0.6)',
-                            color: 'white',
-                            p: 1
-                          }}
-                        >
-                          Deprem Sonrası
-                        </Box>
-                      </Box>
-                    </Grid>
-                  </Grid>
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <Card sx={{ height: '100%', borderRadius: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        Hasar Oranı
-                      </Typography>
-                      <Box sx={{ position: 'relative', display: 'inline-flex', width: '100%', justifyContent: 'center', my: 2 }}>
-                        <Box
-                          sx={{
-                            position: 'relative',
-                            display: 'inline-flex',
-                            width: 150,
-                            height: 150,
-                          }}
-                        >
-                          <CircularProgress
-                            variant="determinate"
-                            value={100}
-                            size={150}
-                            thickness={4}
-                            sx={{ color: theme.palette.grey[200], position: 'absolute' }}
-                          />
-                          <CircularProgress
-                            variant="determinate"
-                            value={selectedAnalysis.results.damagePercentage}
-                            size={150}
-                            thickness={4}
-                            sx={{ color: getDamageColor(selectedAnalysis.results.damagePercentage) }}
-                          />
-                          <Box
-                            sx={{
-                              top: 0,
-                              left: 0,
-                              bottom: 0,
-                              right: 0,
-                              position: 'absolute',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <Typography
-                              variant="h4"
-                              component="div"
-                              color={getDamageColor(selectedAnalysis.results.damagePercentage)}
-                              fontWeight="bold"
-                            >
-                              {`${Math.round(selectedAnalysis.results.damagePercentage)}%`}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-                      <Typography variant="body1" align="center" sx={{ mt: 2 }}>
-                        {selectedAnalysis.results.damagePercentage < 20
-                          ? 'Hafif Hasar'
-                          : selectedAnalysis.results.damagePercentage < 50
-                          ? 'Orta Hasar'
-                          : 'Ağır Hasar'}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <Card sx={{ height: '100%', borderRadius: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        Bina Bilgileri
-                      </Typography>
-                      <Box sx={{ mt: 2 }}>
-                        <Grid container spacing={2}>
-                          <Grid item xs={6}>
-                            <Typography variant="subtitle2" color="textSecondary">
-                              Bina Tipi
-                            </Typography>
-                            <Typography variant="body1" sx={{ mb: 2 }}>
-                              {selectedAnalysis.metadata?.buildingType || 'Belirtilmemiş'}
-                            </Typography>
-                          </Grid>
-                          <Grid item xs={6}>
-                            <Typography variant="subtitle2" color="textSecondary">
-                              Yapım Yılı
-                            </Typography>
-                            <Typography variant="body1" sx={{ mb: 2 }}>
-                              {selectedAnalysis.metadata?.constructionYear || 'Belirtilmemiş'}
-                            </Typography>
-                          </Grid>
-                          <Grid item xs={6}>
-                            <Typography variant="subtitle2" color="textSecondary">
-                              Kat Sayısı
-                            </Typography>
-                            <Typography variant="body1" sx={{ mb: 2 }}>
-                              {selectedAnalysis.metadata?.floorCount || 'Belirtilmemiş'}
-                            </Typography>
-                          </Grid>
-                          <Grid item xs={6}>
-                            <Typography variant="subtitle2" color="textSecondary">
-                              Analiz Tarihi
-                            </Typography>
-                            <Typography variant="body1" sx={{ mb: 2 }}>
-                              {formatDate(selectedAnalysis.createdAt || new Date())}
-                            </Typography>
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <Card sx={{ borderRadius: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        Değerlendirme ve Öneriler
-                      </Typography>
-                      <Box sx={{ mt: 2 }}>
-                        {selectedAnalysis.results.recommendations.map((rec, idx) => (
-                          <Box 
-                            key={idx}
-                            sx={{ 
-                              mb: 2, 
-                              p: 2, 
-                              borderRadius: 1, 
-                              bgcolor: 'rgba(25, 118, 210, 0.04)',
-                              border: '1px solid rgba(25, 118, 210, 0.1)'
-                            }}
-                          >
-                            <Typography variant="body1">
-                              {rec}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setSelectedAnalysis(null)}>Kapat</Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
+      />
       
       {/* Notification Snackbar */}
       <Snackbar

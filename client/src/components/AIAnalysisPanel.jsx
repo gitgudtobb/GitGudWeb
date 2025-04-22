@@ -82,6 +82,7 @@ const AIAnalysisPanel = ({ preImage, postImage, onAnalysisComplete }) => {
         postImage: fixedPostImage
       });
 
+      console.log('AI Analiz Yanıtı:', JSON.stringify(response));
       setResults(response);
       
       // Ebeveyn bileşene sonuçları bildir

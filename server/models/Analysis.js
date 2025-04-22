@@ -1,11 +1,30 @@
 const mongoose = require('mongoose');
 
+// Bina şeması - her bir binanın hasar analizi için
+const buildingSchema = new mongoose.Schema({
+  bbox: {
+    type: [Number],
+    required: true,
+    validate: [val => val.length === 4, 'Bounding box 4 değer içermelidir']
+  },
+  damage: {
+    type: String,
+    enum: ['no-damage', 'minor-damage', 'major-damage', 'destroyed'],
+    required: true
+  },
+  mask: {
+    type: String, // base64 formatında maske görüntüsü
+    required: false // Bazı durumlarda maske olmayabilir
+  }
+});
+
 const analysisSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
+  // Konum bilgisi (opsiyonel)
   location: {
     type: {
       type: String,
@@ -14,35 +33,27 @@ const analysisSchema = new mongoose.Schema({
     },
     coordinates: {
       type: [Number],
-      required: true
+      default: [0, 0]
     },
     address: String
   },
-  images: {
-    before: String,
-    after: String
+  // AI analiz sonuçları
+  image_id: String,
+  masked_image: { type: String, required: false }, // Base64 formatında maskelenmiş görüntü
+  buildings: { type: [buildingSchema], default: [] },
+  statistics: {
+    'no-damage': { type: Number, default: 0 },
+    'minor-damage': { type: Number, default: 0 },
+    'major-damage': { type: Number, default: 0 },
+    'destroyed': { type: Number, default: 0 }
   },
-  results: {
-    damageLevel: {
-      type: String,
-      enum: ['minor', 'moderate', 'severe', 'critical'],
-    },
-    damagePercentage: {
-      type: Number
-    },
-    affectedAreas: [String],
-    recommendations: [String],
-    riskAssessment: String,
-    estimatedRepairCost: {
-      min: Number,
-      max: Number,
-      currency: String
+  total_buildings: { type: Number, default: 0 },
+  // Genel bilgiler
+  name: {
+    type: String,
+    default: function() {
+      return `Hasar Analizi ${new Date().toLocaleDateString()}`;
     }
-  },
-  metadata: {
-    buildingType: String,
-    constructionYear: Number,
-    floorCount: Number
   },
   createdAt: {
     type: Date,
@@ -51,7 +62,7 @@ const analysisSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'completed', 'failed'],
-    default: 'pending'
+    default: 'completed'
   }
 });
 
