@@ -6,6 +6,9 @@ import LoginPage from './pages/LoginPage'
 import MainPage from './pages/MainPage'
 import ProfilePage from './pages/ProfilePage';
 import { CircularProgress, Box } from '@mui/material'
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -19,28 +22,29 @@ function App() {
   }
 
   return (
-    <Router>
-      <Routes>
-        <Route 
-          path="/" 
-          element={isAuthenticated ? <Navigate to="/main" /> : <LoginPage />} 
-        />
-        <Route 
-          path="/login" 
-          element={<LoginPage />} 
-        />
-        <Route 
-          path="/profile" 
-          element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" />} 
-        />
-        <Route 
-          path="/main" 
-          element={isAuthenticated ? <MainPage /> : <Navigate to="/login" />} 
-        />
-        {/* Catch all route for any undefined paths */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </Router>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Router>
+        <Routes>
+          <Route 
+            path="/" 
+            element={isAuthenticated ? <Navigate to="/main" /> : <LoginPage />} 
+          />
+          <Route 
+            path="/login" 
+            element={<LoginPage />} 
+          />
+          <Route 
+            path="/profile" 
+            element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/main" 
+            element={isAuthenticated ? <MainPage /> : <Navigate to="/login" />} 
+          />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Router>
+    </LocalizationProvider>
   )
 }
 
