@@ -1,3 +1,5 @@
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import React from 'react';
 import {
   Dialog,
@@ -93,6 +95,38 @@ const AnalysisDetailModal = ({
     });
   };
 
+  const handleDownloadPDF = async () => {
+    const content = document.getElementById('analysis-pdf-content');
+    const imagesSection = document.getElementById('pdf-images-section');
+    if (!content) return;
+  
+    // Görüntü bölümünü geçici olarak görünür yap
+    if (imagesSection) imagesSection.style.display = 'block';
+  
+    try {
+      const canvas = await html2canvas(content, {
+        scale: 2,
+        useCORS: true
+      });
+  
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+  
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save('analiz-detayi.pdf');
+    } catch (error) {
+      console.error('PDF oluşturma hatası:', error);
+    } finally {
+      // Görüntü bölümünü tekrar gizle
+      if (imagesSection) imagesSection.style.display = 'none';
+    }
+  };
+  
+  
+
   // Analiz tipini belirle ve konsola yazdır
   const isAIAnalysis = !!analysis.masked_image || !!analysis.image_id;
   const isTraditionalAnalysis = !!analysis.beforeImageUrl && !!analysis.afterImageUrl;
@@ -174,7 +208,7 @@ const AnalysisDetailModal = ({
       <DialogContent dividers sx={{ p: 0 }}>
         {/* Genel Bakış Tab */}
         {activeTab === 0 && (
-          <Box sx={{ p: 3 }}>
+          <Box id="analysis-pdf-content" sx={{ p: 3 }}>
             <Grid container spacing={3}>
               {/* Analiz Bilgileri */}
               <Grid item xs={12} md={4}>
@@ -384,6 +418,42 @@ const AnalysisDetailModal = ({
                 </Card>
               </Grid>
             </Grid>
+            <Box 
+              id="pdf-images-section"
+              style={{ display: 'none' }} // PDF indirirken elle görünür yapacağız
+            >
+
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="h5" gutterBottom>Görüntüler</Typography>
+
+            {isTraditionalAnalysis && (
+              <>
+                <Typography variant="subtitle1">Deprem Öncesi</Typography>
+                <img 
+                  src={analysis.beforeImageUrl} 
+                  alt="Deprem Öncesi" 
+                  style={{ width: '100%', maxHeight: 250, objectFit: 'cover', borderRadius: 8, border: '1px solid #ccc', marginBottom: 16 }}
+                />
+                <Typography variant="subtitle1">Deprem Sonrası</Typography>
+                <img 
+                  src={analysis.afterImageUrl} 
+                  alt="Deprem Sonrası" 
+                  style={{ width: '100%', maxHeight: 250, objectFit: 'cover', borderRadius: 8, border: '1px solid #ccc' }}
+                />
+              </>
+            )}
+
+            {isAIAnalysis && analysis.masked_image && (
+                <>
+                  <Typography variant="subtitle1">Yapay Zeka Analizi</Typography>
+                  <img 
+                    src={analysis.masked_image} 
+                    alt="Hasar Haritası" 
+                    style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8, border: '1px solid #ccc', marginTop: 8 }}
+                  />
+                </>
+            )}
+            </Box>
           </Box>
         )}
         
@@ -583,19 +653,28 @@ const AnalysisDetailModal = ({
           startIcon={<CloseIcon />}
         >
           Kapat
-        </Button>
-        
-        <Button 
-          variant="contained" 
-          color="primary"
-          onClick={() => {
-            // Rapor oluşturma fonksiyonu buraya eklenebilir
-            alert('Rapor oluşturma özelliği yakında eklenecek');
-          }}
-        >
-          Rapor Oluştur
-        </Button>
-      </DialogActions>
+          </Button>
+
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              color="secondary"
+              onClick={handleDownloadPDF}
+            >
+              PDF Olarak İndir
+            </Button>
+
+            <Button 
+              variant="contained" 
+              color="primary"
+              onClick={() => {
+                alert('Rapor oluşturma özelliği yakında eklenecek');
+              }}
+            >
+              Rapor Oluştur
+            </Button>
+          </Box>
+        </DialogActions>
     </Dialog>
   );
 };
