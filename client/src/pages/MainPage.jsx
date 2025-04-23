@@ -1,6 +1,10 @@
+import { TextField } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers';
+import dayjs from 'dayjs';
 import { useDropzone } from 'react-dropzone';
 import DragDropUploader from "../components/DragDropUploader.jsx";
 import { useState, useCallback, useEffect } from 'react'
+import {FormControl, InputLabel, MenuItem, Select } from '@mui/material';
 import { 
   Box, 
   Container, 
@@ -58,6 +62,7 @@ import { useAuth0 } from '@auth0/auth0-react'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../services/api'
 
+
 const pica = new Pica()
 
 function MainPage() {
@@ -74,8 +79,14 @@ function MainPage() {
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(false);
   const theme = useTheme();
+  const [buildingFilter, setBuildingFilter] = useState('');
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [dateFilter, setDateFilter] = useState(null);
+  const [buildingRange, setBuildingRange] = useState('all');
   
+
+
+
   // Hasar seviyelerine göre renk ve ikon atamaları
   const damageConfig = {
     'no-damage': {
@@ -357,6 +368,35 @@ function MainPage() {
   useEffect(() => {
     loadAnalyses();
   }, []);
+
+  const filteredAnalyses = analyses.filter((analysis) => {
+
+  
+    // Tarih filtreleme
+    if (dateFilter) {
+      const createdAt = new Date(analysis.createdAt);
+      const selectedDate = new Date(dateFilter);
+      if (
+        createdAt.getFullYear() !== selectedDate.getFullYear() ||
+        createdAt.getMonth() !== selectedDate.getMonth() ||
+        createdAt.getDate() !== selectedDate.getDate()
+      ) {
+        return false;
+      }
+    }
+  // Bina sayısı filtreleme
+  if (buildingFilter) {
+    
+    const totalBuildings = analysis.total_buildings || 0;
+    if (buildingFilter === '0-5' && totalBuildings > 5) return false;
+    if (buildingFilter === '5-15' && (totalBuildings <= 5 || totalBuildings > 15)) return false;
+    if (buildingFilter === '15-30' && (totalBuildings <= 15 || totalBuildings > 30)) return false;
+    if (buildingFilter === '30+' && totalBuildings <= 30) return false;
+  }
+
+  return true;
+});
+  
 
   return (
     <Box className="main-page" sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -719,6 +759,65 @@ function MainPage() {
                 <HistoryIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                 Önceki Analizler
               </Typography>
+
+              <Box
+  sx={{
+    display: 'flex',
+    gap: 3,
+    alignItems: 'flex-start',
+    mb: 3,
+    flexWrap: 'wrap'
+  }}
+>
+  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+      Tarihe Göre Filtrele
+    </Typography>
+    <DatePicker
+      value={dateFilter}
+      onChange={(newValue) => setDateFilter(newValue)}
+      slotProps={{
+        textField: {
+          size: 'small',
+          sx: {
+            border: '1px solid #1976d2',
+            borderRadius: 1,
+            backgroundColor: 'white',
+          }
+        }
+      }}
+    />
+  </Box>
+
+  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+      Bina Sayısına Göre
+    </Typography>
+    <FormControl size="small" sx={{ minWidth: 250 }}>
+      <Select
+        value={buildingFilter}
+        onChange={(e) => setBuildingFilter(e.target.value)}
+        displayEmpty
+        sx={{
+          border: '1px solid #1976d2',
+          borderRadius: 1,
+          backgroundColor: 'white'
+        }}
+      >
+        <MenuItem value="">Tümü</MenuItem>
+        <MenuItem value="0-5">0-5 Bina</MenuItem>
+        <MenuItem value="5-15">5-15 Bina</MenuItem>
+        <MenuItem value="15-30">15-30 Bina</MenuItem>
+        <MenuItem value="30+">30+ Bina</MenuItem>
+      </Select>
+    </FormControl>
+  </Box>
+</Box>
+
+
+
+              
+
               
               {loading ? (
                 <Box sx={{ width: '100%', my: 4, textAlign: 'center' }}>
@@ -757,7 +856,7 @@ function MainPage() {
                     Tüm Analizler
                   </Typography>
                   <Grid container spacing={3}>
-                    {analyses.map((analysis, index) => {
+                    {filteredAnalyses.map((analysis, index) => {
                       // Analiz tipini belirle
                       const isAIAnalysis = !!analysis.masked_image || !!analysis.image_id;
                       const imageUrl = isAIAnalysis ? analysis.masked_image : analysis.afterImageUrl;
