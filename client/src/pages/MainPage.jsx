@@ -1,5 +1,6 @@
 import { TextField } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import dayjs from 'dayjs';
 import { useDropzone } from 'react-dropzone';
 import DragDropUploader from "../components/DragDropUploader.jsx";
@@ -45,6 +46,7 @@ import HistoryIcon from '@mui/icons-material/History'
 import CompareIcon from '@mui/icons-material/Compare'
 import WarningIcon from '@mui/icons-material/Warning'
 import InfoIcon from '@mui/icons-material/Info'
+import CloseIcon from '@mui/icons-material/Close'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ErrorIcon from '@mui/icons-material/Error'
 import DangerousIcon from '@mui/icons-material/Dangerous'
@@ -83,8 +85,16 @@ function MainPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [dateFilter, setDateFilter] = useState(null);
   const [buildingRange, setBuildingRange] = useState('all');
-  
+  const [statsOpen, setStatsOpen] = useState(false);
 
+  // İstatistik verileri
+  const totalAnalyses = analyses.length;
+  const totalBuildings = analyses.reduce((sum, a) => sum + (a.total_buildings || 0), 0);
+  const totalSevere = analyses.reduce((sum, a) => {
+    const severeCount = a.statistics?.['major-damage'] || 0;
+    return sum + severeCount;
+  }, 0);
+  const lastAnalysisDate = analyses[0]?.createdAt ? new Date(analyses[0].createdAt).toLocaleDateString('tr-TR') : 'Yok';
 
 
   // Hasar seviyelerine göre renk ve ikon atamaları
@@ -812,6 +822,14 @@ function MainPage() {
       </Select>
     </FormControl>
   </Box>
+      {/* 📊 İstatistik Butonu */}
+  <Box sx={{ mt: 3 , ml: 'auto'}}>
+    <IconButton onClick={() => setStatsOpen(true)} sx={{ border: '1px solid #1976d2' }}>
+      <span style={{ fontSize: 24 }}>📊</span>
+    </IconButton>
+  </Box>
+
+
 </Box>
 
 
@@ -1088,6 +1106,30 @@ function MainPage() {
           {notification.message}
         </Alert>
       </Snackbar>
+      <Dialog open={statsOpen} onClose={() => setStatsOpen(false)} maxWidth="xs" fullWidth>
+  <DialogTitle>
+    Genel İstatistikler
+    <IconButton
+      aria-label="close"
+      onClick={() => setStatsOpen(false)}
+      sx={{
+        position: 'absolute',
+        right: 8,
+        top: 8,
+        color: (theme) => theme.palette.grey[500],
+      }}
+    >
+      <CloseIcon />
+    </IconButton>
+  </DialogTitle>
+  <DialogContent dividers>
+    <Typography variant="body1" gutterBottom><strong>Toplam Analiz:</strong> {totalAnalyses}</Typography>
+    <Typography variant="body1" gutterBottom><strong>Analiz Edilen Toplam Bina:</strong> {totalBuildings}</Typography>
+    <Typography variant="body1" gutterBottom><strong>Büyük Hasarlı Bina:</strong> {totalSevere}</Typography>
+    <Typography variant="body1"><strong>Son Analiz Tarihi:</strong> {lastAnalysisDate}</Typography>
+  </DialogContent>
+</Dialog>
+
     </Box>
   )
 }
