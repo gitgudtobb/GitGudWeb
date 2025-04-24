@@ -35,6 +35,13 @@ router.post('/static-image', async (req, res) => {
     const fileName = `google_maps_${timestamp}_${randomString}.jpg`;
     const filePath = path.join(uploadsDir, fileName);
     
+    // API anahtarını kontrol et
+    console.log('Google Maps API anahtarı kullanılıyor:', GOOGLE_MAPS_API_KEY);
+    if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === 'undefined') {
+      console.error('Google Maps API anahtarı tanımlanmamış!');
+      return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
+    }
+    
     // Google Maps Statik API'den görüntü al
     let url = `https://maps.googleapis.com/maps/api/staticmap?center=${center.lat},${center.lng}&zoom=${zoom}&size=${size.width}x${size.height}&maptype=${mapType || 'satellite'}&key=${GOOGLE_MAPS_API_KEY}`;
     
@@ -43,7 +50,7 @@ router.post('/static-image', async (req, res) => {
       url = `https://maps.googleapis.com/maps/api/staticmap?size=${size.width}x${size.height}&maptype=${mapType || 'satellite'}&visible=${bounds.south},${bounds.west}|${bounds.north},${bounds.east}&key=${GOOGLE_MAPS_API_KEY}`;
     }
     
-    console.log("Google Maps API URL:", url);
+    console.log("Google Maps API URL:", url.replace(GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
     
     const response = await axios({
       method: 'get',
@@ -81,10 +88,13 @@ router.post('/static-image', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Google Maps görüntüsü alınırken hata:', error);
-    res.status(500).json({ 
-      error: 'Görüntü alınırken bir hata oluştu', 
-      details: error.message 
+    console.error('Google Maps API hatası:', error.message);
+    console.error('Detaylı hata:', error.response?.data || error);
+    console.error('HTTP Durum Kodu:', error.response?.status);
+    res.status(error.response?.status || 500).json({
+      error: 'Görüntü alınamadı',
+      details: error.response?.data?.error || error.message,
+      status: error.response?.status
     });
   }
 });

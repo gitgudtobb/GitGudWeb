@@ -83,7 +83,7 @@ const HeroSection = () => {
                     }
                   }}
                 >
-                  Deprem Hasar Analizi
+                  Afet Hasar Tespit Analizi
                 </Typography>
                 
                 <Typography 
@@ -97,7 +97,7 @@ const HeroSection = () => {
                     lineHeight: 1.6
                   }}
                 >
-                  Gelişmiş yapay zeka algoritmalarımız ile deprem sonrası hasar tespitini 
+                  Gelişmiş yapay zeka algoritmalarımız ile afet sonrası hasar tespitini 
                   hızlı, güvenilir ve hassas bir şekilde gerçekleştiriyoruz.
                 </Typography>
                 

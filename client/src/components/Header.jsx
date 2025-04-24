@@ -103,7 +103,7 @@ const Header = () => {
                 }
               }}
             >
-              DEPREM ANALİZ
+              AFET TESPİT
             </Typography>
           </Box>
 
@@ -130,7 +130,7 @@ const Header = () => {
                 letterSpacing: '0.5px',
               }}
             >
-              DEPREM ANALİZ
+              AFET TESPİT
             </Typography>
           </Box>
 

@@ -52,35 +52,41 @@ const AnalysisDetailModal = ({
   // DEBUG: Log the incoming analysis prop
   console.log('AnalysisDetailModal received analysis:', analysis);
 
-  // Hasar seviyelerine göre renk ve ikon atamaları
+  // Hasar seviyelerine göre renk ve ikon atamaları - Güncellenmiş
   const damageConfig = {
     'no-damage': {
-      color: '#4caf50',
+      color: '#4caf50', // Yeşil - Hasar Yok
       icon: <CheckCircleIcon />,
       label: 'Hasar Yok'
     },
     'minor-damage': {
-      color: '#ff9800',
+      color: '#FFEB3B', // Sarı - Az Hasar
       icon: <WarningIcon />,
-      label: 'Küçük Hasar'
+      label: 'Az Hasar'
+    },
+    'medium-damage': {
+      color: '#ff9800', // Turuncu - Orta Hasar
+      icon: <WarningIcon />,
+      label: 'Orta Hasar'
     },
     'major-damage': {
-      color: '#f44336',
-      icon: <ErrorIcon />,
-      label: 'Büyük Hasar'
+      color: '#ff9800', // Turuncu - Orta Hasar (eski kategori adı)
+      icon: <WarningIcon />,
+      label: 'Orta Hasar'
     },
     'destroyed': {
-      color: '#9c27b0',
+      color: '#f44336', // Kırmızı - Yıkılmış
       icon: <DangerousIcon />,
       label: 'Yıkılmış'
     }
   };
 
-  // Helper function to get damage color
+  // Helper function to get damage color - Güncellenmiş
   const getDamageColor = (damagePercentage) => {
-    if (damagePercentage < 20) return '#4caf50'; // Green
-    if (damagePercentage < 50) return '#ff9800'; // Orange
-    return '#f44336'; // Red
+    if (damagePercentage < 15) return '#4caf50'; // Yeşil - Hasar Yok
+    if (damagePercentage < 35) return '#FFEB3B'; // Sarı - Az Hasar
+    if (damagePercentage < 65) return '#ff9800'; // Turuncu - Orta Hasar
+    return '#f44336'; // Kırmızı - Yıkılmış
   };
 
   // Format date function
@@ -199,9 +205,6 @@ const AnalysisDetailModal = ({
         >
           <Tab label="Genel Bakış" icon={<InfoIcon />} iconPosition="start" />
           <Tab label="Görüntüler" icon={<ImageIcon />} iconPosition="start" />
-          {isAIAnalysis && (
-            <Tab label="Bina Detayları" icon={<BuildingIcon />} iconPosition="start" />
-          )}
         </Tabs>
       </Box>
 
@@ -319,8 +322,8 @@ const AnalysisDetailModal = ({
                                 sx={{ 
                                   p: 2, 
                                   borderRadius: 2,
-                                  bgcolor: `${damageConfig[damage]?.color}10` || '#f5f5f5',
-                                  border: `1px solid ${damageConfig[damage]?.color}30` || '#e0e0e0',
+                                  bgcolor: damage === 'major-damage' ? `#ff980010` : `${damageConfig[damage]?.color}10` || '#f5f5f5',
+                                  border: damage === 'major-damage' ? `1px solid #ff980030` : `1px solid ${damageConfig[damage]?.color}30` || '#e0e0e0',
                                   height: '100%',
                                   display: 'flex',
                                   flexDirection: 'column',
@@ -332,19 +335,21 @@ const AnalysisDetailModal = ({
                                   width: 40, 
                                   height: 40, 
                                   borderRadius: '50%', 
-                                  bgcolor: damageConfig[damage]?.color || '#999',
+                                  bgcolor: damage === 'major-damage' ? '#ff9800' : damageConfig[damage]?.color || '#999',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   mb: 1
                                 }}>
-                                  {damageConfig[damage]?.icon ? React.cloneElement(damageConfig[damage].icon, { style: { color: 'white' } }) : null}
+                                  {damage === 'major-damage' 
+                                    ? <WarningIcon style={{ color: 'white' }} />
+                                    : damageConfig[damage]?.icon ? React.cloneElement(damageConfig[damage].icon, { style: { color: 'white' } }) : null}
                                 </Box>
                                 <Typography variant="h4" fontWeight="bold" align="center">
                                   {count}
                                 </Typography>
                                 <Typography variant="body2" color="textSecondary" align="center">
-                                  {damageConfig[damage]?.label || damage}
+                                  {damage === 'major-damage' ? 'Orta Hasar' : damageConfig[damage]?.label || damage}
                                 </Typography>
                               </Paper>
                             </Grid>
@@ -428,16 +433,16 @@ const AnalysisDetailModal = ({
 
             {isTraditionalAnalysis && (
               <>
-                <Typography variant="subtitle1">Deprem Öncesi</Typography>
+                <Typography variant="subtitle1">Afet Öncesi</Typography>
                 <img 
                   src={analysis.beforeImageUrl} 
-                  alt="Deprem Öncesi" 
+                  alt="Afet Öncesi" 
                   style={{ width: '100%', maxHeight: 250, objectFit: 'cover', borderRadius: 8, border: '1px solid #ccc', marginBottom: 16 }}
                 />
-                <Typography variant="subtitle1">Deprem Sonrası</Typography>
+                <Typography variant="subtitle1">Afet Sonrası</Typography>
                 <img 
                   src={analysis.afterImageUrl} 
-                  alt="Deprem Sonrası" 
+                  alt="Afet Sonrası" 
                   style={{ width: '100%', maxHeight: 250, objectFit: 'cover', borderRadius: 8, border: '1px solid #ccc' }}
                 />
               </>
@@ -468,7 +473,7 @@ const AnalysisDetailModal = ({
                       <Box
                         component="img"
                         src={analysis.beforeImageUrl}
-                        alt="Deprem Öncesi"
+                        alt="Afet Öncesi"
                         sx={{
                           position: 'absolute',
                           top: 0,
@@ -481,7 +486,7 @@ const AnalysisDetailModal = ({
                     </Box>
                     <Box sx={{ p: 2, bgcolor: theme.palette.primary.main, color: 'white' }}>
                       <Typography variant="subtitle1" fontWeight="medium">
-                        Deprem Öncesi
+                        Afet Öncesi
                       </Typography>
                     </Box>
                   </Card>
@@ -492,7 +497,7 @@ const AnalysisDetailModal = ({
                       <Box
                         component="img"
                         src={analysis.afterImageUrl}
-                        alt="Deprem Sonrası"
+                        alt="Afet Sonrası"
                         sx={{
                           position: 'absolute',
                           top: 0,
@@ -505,7 +510,7 @@ const AnalysisDetailModal = ({
                     </Box>
                     <Box sx={{ p: 2, bgcolor: theme.palette.primary.main, color: 'white' }}>
                       <Typography variant="subtitle1" fontWeight="medium">
-                        Deprem Sonrası
+                        Afet Sonrası
                       </Typography>
                     </Box>
                   </Card>
@@ -586,64 +591,7 @@ const AnalysisDetailModal = ({
           </Box>
         )}
         
-        {/* Bina Detayları Tab - Sadece AI Analizleri için */}
-        {activeTab === 2 && isAIAnalysis && (
-          <Box sx={{ p: 3 }}>
-            {analysis.buildings && analysis.buildings.length > 0 ? (
-              <Grid container spacing={2}>
-                {analysis.buildings.map((building, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={index}>
-                    <Card sx={{ borderRadius: 2 }}>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          Bina #{index + 1}
-                        </Typography>
-                        
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                          <Chip 
-                            icon={damageConfig[building.damage_class]?.icon ? 
-                              React.cloneElement(damageConfig[building.damage_class].icon, { style: { color: 'white' } }) : null
-                            }
-                            label={damageConfig[building.damage_class]?.label || building.damage_class} 
-                            sx={{ 
-                              bgcolor: damageConfig[building.damage_class]?.color || '#999',
-                              color: 'white',
-                              fontWeight: 'bold'
-                            }}
-                          />
-                          
-                          <Typography variant="body2" color="textSecondary" sx={{ ml: 1 }}>
-                            {building.confidence ? `${(building.confidence * 100).toFixed(1)}% güven` : ''}
-                          </Typography>
-                        </Box>
-                        
-                        <Typography variant="body2" gutterBottom>
-                          <strong>Koordinatlar:</strong> {building.bbox ? 
-                            `x: ${building.bbox[0].toFixed(0)}, y: ${building.bbox[1].toFixed(0)}, w: ${(building.bbox[2] - building.bbox[0]).toFixed(0)}, h: ${(building.bbox[3] - building.bbox[1]).toFixed(0)}` : 
-                            'Bilinmiyor'
-                          }
-                        </Typography>
-                        
-                        {building.area && (
-                          <Typography variant="body2">
-                            <strong>Alan:</strong> {building.area.toFixed(1)} piksel²
-                          </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <Box sx={{ p: 3, textAlign: 'center' }}>
-                <InfoIcon sx={{ fontSize: 40, color: 'text.secondary', opacity: 0.5 }} />
-                <Typography color="textSecondary">
-                  Bina detayları bulunamadı
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        )}
+        {/* Bina Detayları sekme içeriği kaldırıldı */}
       </DialogContent>
       
       <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>

@@ -56,6 +56,21 @@ function MapImageSelector({ onImageSelect, onClose }) {
 
     setLoading(true);
     setError(null);
+    
+    // API servis durumunu kontrol et
+    try {
+      const serviceCheck = await fetch(`${API_BASE_URL}/api/earth-engine/test`);
+      const serviceStatus = await serviceCheck.json();
+      
+      if (!serviceStatus.success) {
+        throw new Error('Earth Engine servisi şu anda kullanılamıyor. API kimlik bilgileri sorunu.');
+      }
+    } catch (error) {
+      console.error('Earth Engine servis kontrolü başarısız:', error);
+      setError('Earth Engine API şu anda erişilemez durumdadır. Lütfen daha sonra tekrar deneyin.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const map = mapRef.current;

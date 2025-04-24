@@ -22,6 +22,17 @@ const privateKey = require(credentialsPath);
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 fs.mkdir(uploadsDir, { recursive: true }).catch(console.error);
 
+// Test endpoint for Earth Engine credentials
+router.get('/test', async (req, res) => {
+  try {
+    await initializeEarthEngine('test');
+    res.json({ success: true, message: 'Earth Engine başarıyla başlatıldı ve kimlik doğrulama çalışıyor!' });
+  } catch (error) {
+    console.error('Earth Engine test hatası:', error);
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+  }
+});
+
 // Initialize Earth Engine with more detailed logging
 const initializeEarthEngine = async (context) => {
   return new Promise((resolve, reject) => {
@@ -91,6 +102,7 @@ function getBoundsCacheKey(bounds) {
 
 // Get available dates for a location
 router.post('/dates', async (req, res) => {
+  console.log('Earth Engine /dates endpoint çağrıldı:', req.body);
   const { lat, lng, bounds } = req.body;
 
   if (!lat || !lng) {
@@ -199,6 +211,7 @@ function processDates(info, res, cacheKey) {
 
 // Get available dates for a specific location
 router.post('/dates', async (req, res) => {
+  console.log('Earth Engine /dates endpoint çağrıldı:', req.body);
   const { lat, lng, bounds } = req.body;
 
   if (!lat || !lng || !bounds) {
@@ -364,12 +377,14 @@ router.post('/image', async (req, res) => {
         });
       } catch (error) {
         console.error('Error processing image:', error);
-        res.status(500).json({ error: 'Error processing satellite imagery' });
+        console.error('Error details:', error.stack);
+        res.status(500).json({ error: error.message, details: error.stack });
       }
     });
   } catch (error) {
     console.error('Error in /image endpoint:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error details:', error.stack);
+    res.status(500).json({ error: error.message, details: error.stack });
   }
 });
 

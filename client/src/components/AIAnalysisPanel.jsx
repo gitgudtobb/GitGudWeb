@@ -31,25 +31,30 @@ const AIAnalysisPanel = ({ preImage, postImage, onAnalysisComplete }) => {
   const [results, setResults] = useState(null);
   const api = useApi();
 
-  // Hasar seviyelerine göre renk ve ikon atamaları
+  // Hasar seviyelerine göre renk ve ikon atamaları - Güncellenmiş
   const damageConfig = {
     'no-damage': {
-      color: '#4caf50',
+      color: '#4caf50', // Yeşil - Hasar Yok
       icon: <CheckCircleIcon />,
       label: 'Hasar Yok'
     },
     'minor-damage': {
-      color: '#ff9800',
+      color: '#FFEB3B', // Sarı - Az Hasar
       icon: <WarningIcon />,
-      label: 'Küçük Hasar'
+      label: 'Az Hasar'
+    },
+    'medium-damage': {
+      color: '#ff9800', // Turuncu - Orta Hasar
+      icon: <WarningIcon />,
+      label: 'Orta Hasar'
     },
     'major-damage': {
-      color: '#f44336',
-      icon: <ErrorIcon />,
-      label: 'Büyük Hasar'
+      color: '#ff9800', // Turuncu - Orta Hasar (Eski şemada major-damage)
+      icon: <WarningIcon />,
+      label: 'Orta Hasar'
     },
     'destroyed': {
-      color: '#9c27b0',
+      color: '#f44336', // Kırmızı - Yıkılmış
       icon: <DangerousIcon />,
       label: 'Yıkılmış'
     }
@@ -166,16 +171,48 @@ const AIAnalysisPanel = ({ preImage, postImage, onAnalysisComplete }) => {
               />
             </Grid>
             
-            {Object.entries(results.statistics).map(([damage, count]) => (
-              <Grid item xs={12} sm={6} md={3} key={damage}>
-                <StatCard
-                  title={damageConfig[damage].label}
-                  value={count}
-                  color={damageConfig[damage].color}
-                  icon={damageConfig[damage].icon}
-                />
-              </Grid>
-            ))}
+            {Object.entries(results.statistics).map(([damage, count]) => {
+              // Hasar kategorisini doğru şekilde eşleştir ve etiketle
+              let categoryKey = damage;
+              let categoryColor = '';
+              let categoryLabel = '';
+              let categoryIcon = null;
+              
+              // özel durumlar için eski kategorileri yeni renk ve etiketlerle uyumlu hale getir
+              if (damage === 'destroyed') {
+                categoryColor = '#f44336'; // Kırmızı - Yıkılmış (eskiden mor renk kullanılıyordu)
+                categoryLabel = 'Yıkılmış';
+                categoryIcon = <DangerousIcon />;
+              } else if (damage === 'major-damage') {
+                categoryColor = '#ff9800'; // Turuncu - Orta Hasar (eski şemada major-damage, Büyük Hasar olarak adlandırılıyordu)
+                categoryLabel = 'Orta Hasar'; 
+                categoryIcon = <WarningIcon />;
+              } else if (damage === 'minor-damage') {
+                categoryColor = '#FFEB3B'; // Sarı - Az Hasar (eski şemada Küçük Hasar olarak adlandırılıyordu)
+                categoryLabel = 'Az Hasar';
+                categoryIcon = <WarningIcon />;
+              } else if (damage === 'no-damage') {
+                categoryColor = '#4caf50'; // Yeşil - Hasar Yok
+                categoryLabel = 'Hasar Yok';
+                categoryIcon = <CheckCircleIcon />;
+              } else {
+                // Diğer durumlar veya bilinmeyen kategoriler için damageConfig nesnesinden al
+                categoryColor = (damageConfig[damage] && damageConfig[damage].color) || '#757575'; // Gri (varsayılan)
+                categoryLabel = (damageConfig[damage] && damageConfig[damage].label) || damage;
+                categoryIcon = (damageConfig[damage] && damageConfig[damage].icon) || <AnalyticsIcon />;
+              }
+              
+              return (
+                <Grid item xs={12} sm={6} md={3} key={damage}>
+                  <StatCard
+                    title={categoryLabel}
+                    value={count}
+                    color={categoryColor}
+                    icon={categoryIcon}
+                  />
+                </Grid>
+              );
+            })}
           </Grid>
           
           {/* Maskelenmiş Görüntü */}
@@ -191,7 +228,7 @@ const AIAnalysisPanel = ({ preImage, postImage, onAnalysisComplete }) => {
                   style={{ maxWidth: '100%', maxHeight: '400px' }}
                 />
                 <Typography variant="caption" display="block" mt={1} color="text.secondary">
-                  Yeşil: Hasarsız | Sarı: Az Hasarlı | Turuncu: Çok Hasarlı | Kırmızı: Yıkılmış
+                  Yeşil: Hasar Yok | Sarı: Az Hasar | Turuncu: Orta Hasar | Kırmızı: Yıkılmış
                 </Typography>
               </Paper>
             </Box>

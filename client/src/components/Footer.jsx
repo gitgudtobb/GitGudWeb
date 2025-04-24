@@ -52,7 +52,7 @@ const Footer = () => {
                   letterSpacing: '0.5px'
                 }}
               >
-                Deprem Analiz
+                Afet Tespit
               </Typography>
             </Box>
             <Typography 
@@ -65,7 +65,7 @@ const Footer = () => {
               }}
             >
               Yapay zeka destekli deprem görüntülerinden analiz çıkaran web uygulaması.
-              Deprem sonrası hasar tespiti ve analizi için geliştirilmiştir.
+              Afet sonrası hasar tespiti ve analizi için geliştirilmiştir.
             </Typography>
 
             <Button 
@@ -245,7 +245,7 @@ const Footer = () => {
           gap: 2
         }}>
           <Typography variant="body2" color="text.secondary" align={isMobile ? 'center' : 'left'}>
-            © {currentYear} Deprem Analiz. Tüm hakları saklıdır.
+            © {currentYear} Afet Tespit. Tüm hakları saklıdır.
           </Typography>
           
           <Box sx={{ display: 'flex', gap: 2 }}>

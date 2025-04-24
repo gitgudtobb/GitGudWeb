@@ -22,6 +22,7 @@ import 'leaflet/dist/leaflet.css';
 
 // API URL
 const API_BASE_URL = 'http://localhost:5001';
+const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
 // Harita türleri
 const mapTypes = [
@@ -80,6 +81,41 @@ export default function GoogleMapImageSelector({ onImageSelect, onClose }) {
     setImageMetadata(null);
   };
   
+  // Özel fonksiyon: Doğrudan client tarafından static map görüntüsü al
+  const getDirectStaticMap = async (bounds, mapTypeValue, imageSize) => {
+    // Statık görüntü üretmek için doğrudan Google Maps API
+    const center = `${map.getCenter().lat},${map.getCenter().lng}`;
+    const zoom = map.getZoom();
+    const size = `${imageSize?.width || 640}x${imageSize?.height || 480}`;
+    const mapType = mapTypeValue || 'satellite';
+    
+    // Doğrudan Google Maps statık görüntü URL'sini oluştur
+    let imageUrl;
+    
+    if (bounds) {
+      // Sınırlar kullanarak görüntü oluştur
+      const path = `${bounds.south},${bounds.west}|${bounds.north},${bounds.east}`;
+      imageUrl = `https://maps.googleapis.com/maps/api/staticmap?size=${size}&maptype=${mapType}&visible=${path}&key=${MAPS_API_KEY}`;
+    } else {
+      // Merkez ve zoom kullanarak görüntü oluştur
+      imageUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${center}&zoom=${zoom}&size=${size}&maptype=${mapType}&key=${MAPS_API_KEY}`;
+    }
+    
+    // İşlem basit olması için doğrudan URL döndürüyoruz
+    // Gerçek projelerde görüntüyü indirebilir ve daha sonra kullanabilirsiniz
+    return {
+      imageUrl,
+      metadata: {
+        source: 'google_maps_direct',
+        mapType,
+        center: map.getCenter(),
+        zoom,
+        bounds: bounds || map.getBounds(),
+        timestamp: new Date().toISOString()
+      }
+    };
+  };
+
   // Görüntü oluştur butonuna tıklandığında çağrılır
   const handleSelectArea = async () => {
     if (!map) return;
@@ -94,23 +130,39 @@ export default function GoogleMapImageSelector({ onImageSelect, onClose }) {
       console.log("Harita merkezi:", center);
       console.log("Harita sınırları:", bounds);
       
-      // Sunucu üzerinden Google Maps görüntüsünü al
+      // Client tarafında doğrudan Google Maps API'yi kullanarak görüntü al
+      const staticMapData = await getDirectStaticMap(
+        {
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest()
+        },
+        mapType,
+        { width: 640, height: 480 }
+      );
+      
+      console.log("Doğrudan Maps API yanıtı:", staticMapData);
+      
+      // Görüntü URL'sini ve metadata'yı ayarla
+      setPreviewImage(staticMapData.imageUrl);
+      setImageMetadata(staticMapData.metadata);
+      setSelectedBounds(bounds);
+      setStep('preview-image');
+      setLoading(false);
+      return;
+      
+      /* Önceki sunucu tabanlı yöntem (yedekleme için)
       const response = await fetch(`${API_BASE_URL}/api/google-maps/static-image`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          center: {
-            lat: center.lat,
-            lng: center.lng
-          },
-          zoom: zoom,
-          size: {
-            width: 640,
-            height: 640
-          },
-          mapType: mapType,
+          center: center,
+          zoom: map.getZoom(),
+          size: { width: 640, height: 480 },
+          mapType,
           bounds: {
             north: bounds.getNorth(),
             south: bounds.getSouth(),
@@ -121,6 +173,9 @@ export default function GoogleMapImageSelector({ onImageSelect, onClose }) {
         credentials: 'include'
       });
       
+      */
+      
+      /* Bu kısım server tabanlı çözüm için yorum satırına alındı
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Görüntü oluşturulurken bir hata oluştu (${response.status})`);
@@ -134,6 +189,7 @@ export default function GoogleMapImageSelector({ onImageSelect, onClose }) {
       setImageMetadata(data.metadata);
       setSelectedBounds(bounds);
       setStep('preview-image');
+      */
       
     } catch (error) {
       console.error('Error generating preview:', error);

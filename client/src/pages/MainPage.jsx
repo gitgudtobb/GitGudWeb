@@ -91,31 +91,32 @@ function MainPage() {
   const totalAnalyses = analyses.length;
   const totalBuildings = analyses.reduce((sum, a) => sum + (a.total_buildings || 0), 0);
   const totalSevere = analyses.reduce((sum, a) => {
-    const severeCount = a.statistics?.['major-damage'] || 0;
+    // Orta hasar olarak kabul edilecek
+    const severeCount = a.statistics?.['major-damage'] || a.statistics?.['medium-damage'] || 0;
     return sum + severeCount;
   }, 0);
   const lastAnalysisDate = analyses[0]?.createdAt ? new Date(analyses[0].createdAt).toLocaleDateString('tr-TR') : 'Yok';
 
 
-  // Hasar seviyelerine göre renk ve ikon atamaları
+  // Hasar seviyelerine göre renk ve ikon atamaları - Güncellenmiş
   const damageConfig = {
     'no-damage': {
-      color: '#4caf50',
+      color: '#4caf50', // Yeşil - Hasar Yok
       icon: <CheckCircleIcon />,
       label: 'Hasar Yok'
     },
     'minor-damage': {
-      color: '#ff9800',
+      color: '#FFEB3B', // Sarı - Az Hasar
       icon: <WarningIcon />,
-      label: 'Küçük Hasar'
+      label: 'Az Hasar'
     },
-    'major-damage': {
-      color: '#f44336',
-      icon: <ErrorIcon />,
-      label: 'Büyük Hasar'
+    'medium-damage': {
+      color: '#ff9800', // Turuncu - Orta Hasar
+      icon: <WarningIcon />,
+      label: 'Orta Hasar'
     },
     'destroyed': {
-      color: '#9c27b0',
+      color: '#f44336', // Kırmızı - Yıkılmış
       icon: <DangerousIcon />,
       label: 'Yıkılmış'
     }
@@ -206,26 +207,90 @@ function MainPage() {
       setLoading(true);
       console.log('Loading satellite image:', imageUrl);
 
-      // Pre-load the image
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
+      // Görüntü URL'sinin bir Google Maps Static API URL'si olup olmadığını kontrol et
+      const isGoogleMapsUrl = imageUrl.includes('maps.googleapis.com/maps/api/staticmap');
       
-      await new Promise((resolve, reject) => {
-        img.onload = () => {
-          console.log('Image loaded successfully:', {
-            width: img.width,
-            height: img.height,
-            naturalWidth: img.naturalWidth,
-            naturalHeight: img.naturalHeight
-          });
-          resolve();
-        };
-        img.onerror = (e) => {
-          console.error('Image load error:', e);
-          reject(new Error('Görüntü yüklenemedi'));
-        };
-        img.src = imageUrl;
-      });
+      if (isGoogleMapsUrl) {
+        console.log('Google Maps görüntüsü tespit edildi, canvas yöntemi kullanılıyor');
+        
+        // Bir canvas element'i oluştur ve görüntüyü çek
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        // CORS sorunlarını aşmak için proxy eklenir.
+        // Gerçek uygulamada bu bir backend proxy olabilir
+        img.crossOrigin = 'anonymous';
+        
+        await new Promise((resolve, reject) => {
+          img.onload = () => {
+            console.log('Image loaded successfully:', {
+              width: img.width,
+              height: img.height
+            });
+            
+            // Canvas boyutunu belirle ve görüntüyü çiz
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            // Canvas'ı data URL'sine dönüştür
+            resolve();
+          };
+          
+          img.onerror = (e) => {
+            console.error('Image load error:', e);
+            
+            // Hata durumunda boş bir canvas oluştur
+            canvas.width = 640;
+            canvas.height = 480;
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ff0000';
+            ctx.font = '20px Arial';
+            ctx.fillText('Görüntü yüklenemedi - Google Maps API hatası', 20, canvas.height/2);
+            
+            // Yine de devam et, hata bilgisi içeren canvas'ı kullanacağız
+            resolve();
+          };
+          
+          // Görüntüyü yüklemeye çalış
+          img.src = imageUrl;
+          
+          // 5 saniye içinde yüklenemezse timeout
+          setTimeout(() => {
+            if (!img.complete) {
+              img.src = ''; // Yüklemeyi iptal et
+              reject(new Error('Görüntü yükleme zaman aşımı'));
+            }
+          }, 5000);
+        });
+        
+        // Canvas'ı data URL'sine dönüştür
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        imageUrl = dataUrl; // Orijinal URL yerine çizilmiş canvas'ı kullan
+      } else {
+        // Eğer Google Maps görüntüsü değilse normal yükleme işlemi yap
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        await new Promise((resolve, reject) => {
+          img.onload = () => {
+            console.log('Image loaded successfully:', {
+              width: img.width,
+              height: img.height,
+              naturalWidth: img.naturalWidth,
+              naturalHeight: img.naturalHeight
+            });
+            resolve();
+          };
+          img.onerror = (e) => {
+            console.error('Image load error:', e);
+            reject(new Error('Görüntü yüklenemedi'));
+          };
+          img.src = imageUrl;
+        });
+      }
 
       // Create new images array
       const newImages = [...images];
@@ -314,11 +379,38 @@ function MainPage() {
     setNotification({ ...notification, open: false });
   };
 
-  // Helper function to get damage color
+  // Helper function to get damage color - Güncellenmiş
   const getDamageColor = (damagePercentage) => {
-    if (damagePercentage < 20) return '#4caf50'; // Green
-    if (damagePercentage < 50) return '#ff9800'; // Orange
-    return '#f44336'; // Red
+    if (damagePercentage < 15) return '#4caf50'; // Yeşil - Hasar Yok
+    if (damagePercentage < 35) return '#FFEB3B'; // Sarı - Az Hasar
+    if (damagePercentage < 65) return '#ff9800'; // Turuncu - Orta Hasar
+    return '#f44336'; // Kırmızı - Yıkılmış
+  };
+  
+  // Helper function to get damage color by category (for backwards compatibility)
+  const getDamageColorByCategory = (category) => {
+    // Eski kategorileri yeni renk şemasına uyarla
+    switch(category) {
+      case 'no-damage': return '#4caf50'; // Yeşil - Hasar Yok
+      case 'minor-damage': return '#FFEB3B'; // Sarı - Az Hasar
+      case 'medium-damage': return '#ff9800'; // Turuncu - Orta Hasar
+      case 'major-damage': return '#ff9800'; // Turuncu - Orta Hasar (Eski şemada major-damage)
+      case 'destroyed': return '#f44336'; // Kırmızı - Yıkılmış
+      default: return '#757575'; // Gri - Bilinmeyen kategori
+    }
+  };
+  
+  // Helper function to get damage label by category (for backwards compatibility)
+  const getDamageLabelByCategory = (category) => {
+    // Eski kategorileri yeni etiketlere uyarla
+    switch(category) {
+      case 'no-damage': return 'Hasar Yok';
+      case 'minor-damage': return 'Az Hasar';
+      case 'medium-damage': return 'Orta Hasar';
+      case 'major-damage': return 'Orta Hasar'; // Eski şemada major-damage 
+      case 'destroyed': return 'Yıkılmış';
+      default: return category; // Bilinmeyen kategori
+    }
   };
 
   // Format date function
@@ -434,7 +526,7 @@ function MainPage() {
                 textShadow: '0px 2px 4px rgba(0,0,0,0.1)'
               }}
             >
-              Deprem Hasar Analizi
+              Afet Hasar Tespit Analizi
             </Typography>
             
             <Paper 
@@ -479,7 +571,7 @@ function MainPage() {
                       >
                         <CardContent sx={{ flexGrow: 1 }}>
                           <Typography variant="h6" gutterBottom sx={{ fontWeight: 500 }}>
-                            {index === 0 ? 'Deprem Öncesi' : 'Deprem Sonrası'}
+                            {index === 0 ? 'Afet Öncesi' : 'Afet Sonrası'}
                           </Typography>
                           
                           <Box 
@@ -558,14 +650,15 @@ function MainPage() {
                                   veya haritadan seçin
                                 </Typography>
                                 {/* Drag & Drop + Dosya Seçme */}
-                                <Stack direction="row" spacing={2}>
-                                  <Box
-                                    {...(index === 0 ? getRootProps1() : getRootProps2())}
-                                    sx={{
-                                      width: '100%',
-                                      display: 'inline-block'
+                                <Grid container spacing={2}>
+                                  <Grid item xs={6}>
+                                    <Box
+                                      {...(index === 0 ? getRootProps1() : getRootProps2())}
+                                      sx={{
+                                        height: '100%',
+                                        display: 'flex'
                                       }}
-                                  >
+                                    >
                                       <input {...(index === 0 ? getInputProps1() : getInputProps2())} />
                                       <Button
                                         variant="contained"
@@ -576,28 +669,40 @@ function MainPage() {
                                           py: 2,           
                                           fontSize: '1rem', 
                                           minWidth: '180px',
-                                          borderRadius: 2
+                                          borderRadius: 2,
+                                          height: '100%',
+                                          display: 'flex',
+                                          justifyContent: 'center',
+                                          alignItems: 'center'
                                         }}
                                       >
                                         Dosya Seç
                                       </Button>
                                     </Box>
-
+                                  </Grid>
+                                  
+                                  <Grid item xs={6}>
                                     <Button
                                       variant="outlined"
                                       onClick={handleMapSelect(index)}
                                       startIcon={<MapIcon />}
+                                      fullWidth
                                       sx={{
-                                        px: 2,
-                                        py: 0.3,
-                                        fontSize: '1rem',
+                                        px: 4,           
+                                        py: 2,           
+                                        fontSize: '1rem', 
                                         minWidth: '180px',
-                                        borderRadius: 2
+                                        borderRadius: 2,
+                                        height: '100%',
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center'
                                       }}
                                     >
                                       Haritadan Seç
                                     </Button>
-                                  </Stack>
+                                  </Grid>
+                                </Grid>
                                 </>
                               )}
                             </Box>
@@ -682,6 +787,64 @@ function MainPage() {
                                 {`${analysisResult.damagePercentage}%`}
                               </Typography>
                             </Box>
+                          </Box>
+                        </Box>
+                        
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" gutterBottom>
+                            Hasar Dağılımı
+                          </Typography>
+                          
+                          {/* Hasar dağılımı grafik barı */}
+                          <Box sx={{ 
+                            width: '100%', 
+                            height: 25, 
+                            display: 'flex',
+                            borderRadius: 1,
+                            overflow: 'hidden',
+                            mb: 1
+                          }}>
+                            {/* Hasar kategorilerine göre renkli bölümler */}
+                            {Object.entries(analysisResult.damageDistribution || {}).map(([key, value]) => {
+                              if (value > 0) {
+                                return (
+                                  <Box 
+                                    key={key}
+                                    sx={{
+                                      width: `${value}%`,
+                                      height: '100%',
+                                      bgcolor: damageConfig[key]?.color || 'grey.500',
+                                    }}
+                                  />
+                                );
+                              }
+                              return null;
+                            })}
+                          </Box>
+                          
+                          {/* Renk göstergeleri */}
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {Object.entries(analysisResult.damageDistribution || {}).map(([key, value]) => {
+                              if (value > 0) {
+                                return (
+                                  <Box key={key} sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Box 
+                                      sx={{ 
+                                        width: 12, 
+                                        height: 12, 
+                                        borderRadius: '50%', 
+                                        bgcolor: damageConfig[key]?.color || 'grey.500',
+                                        mr: 0.5
+                                      }} 
+                                    />
+                                    <Typography variant="caption">
+                                      {damageConfig[key]?.label || key}: {value}%
+                                    </Typography>
+                                  </Box>
+                                );
+                              }
+                              return null;
+                            })}
                           </Box>
                         </Box>
                         
@@ -940,7 +1103,7 @@ function MainPage() {
                                   position: 'absolute',
                                   top: 10,
                                   left: 10,
-                                  bgcolor: isAIAnalysis ? '#2196f3' : '#9c27b0',
+                                  bgcolor: isAIAnalysis ? '#2196f3' : '#f44336', // Kırmızı renk - Yıkılmış kategorisi ile uyumlu
                                   color: 'white',
                                   fontWeight: 'bold',
                                   zIndex: 1
@@ -1125,7 +1288,7 @@ function MainPage() {
   <DialogContent dividers>
     <Typography variant="body1" gutterBottom><strong>Toplam Analiz:</strong> {totalAnalyses}</Typography>
     <Typography variant="body1" gutterBottom><strong>Analiz Edilen Toplam Bina:</strong> {totalBuildings}</Typography>
-    <Typography variant="body1" gutterBottom><strong>Büyük Hasarlı Bina:</strong> {totalSevere}</Typography>
+    <Typography variant="body1" gutterBottom><strong>Orta Hasarlı Bina:</strong> {totalSevere}</Typography>
     <Typography variant="body1"><strong>Son Analiz Tarihi:</strong> {lastAnalysisDate}</Typography>
   </DialogContent>
 </Dialog>
